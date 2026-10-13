@@ -62,7 +62,7 @@ class Sim {
     const s = this.s;
     if (g === s.gear || s.dyno) return;
     if (g === -1 && s.speed > 1.5) { this.audio.grind(); this.msg("STOP TO ENGAGE REVERSE"); this.buzz(80); return; }
-    if (this.clutchIn < 0.5 && s.clutch > 0.4 && s.gear !== 0 && !this.opts.autoClutch || (this.clutchIn < 0.5 && !this.opts.autoClutch && g !== 0 && s.on && s.clutch > 0.4)) {
+    if (!this.opts.autoClutch && s.on && g !== 0 && s.clutch > 0.4) {
       this.audio.grind(); this.msg("GRIND! USE THE CLUTCH"); this.buzz(80); return;
     }
     if (this.opts.autoClutch) { this.dipT = 0.28; s.clutch = 0; }
@@ -109,8 +109,7 @@ class Sim {
     }
     // clutch
     if (this.dipT > 0) this.dipT -= dt;
-    const cTarget = this.clutchIn > 0.5 || this.dipT > 0 ? 1 - this.clutchIn : 1;
-    const cT = this.dipT > 0 ? 0 : this.clutchIn > 0 ? 1 - this.clutchIn : cTarget;
+    const cT = this.dipT > 0 ? 0 : 1 - this.clutchIn;
     s.clutch += (cT - s.clutch) * Math.min(1, dt * (cT > s.clutch ? 6 : 25));
 
     let th = this.throttleIn;
