@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Engine audio is procedural Web Audio (src/lib/audio.ts) driven by a singleton physics sim (src/lib/sim.ts); UI reads it via useSyncExternalStore — keeps 60fps physics out of React state.
+- Game state (settings, favorites, configs) persists in localStorage via src/lib/store.tsx — no backend needed.
