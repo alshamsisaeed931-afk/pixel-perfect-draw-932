@@ -24,7 +24,7 @@ function useKeys() {
       if (ev.code === "ShiftLeft" || ev.code === "KeyC") sim.clutchIn = 1;
       if (ev.code === "KeyS" && !ev.repeat) sim.startStop();
       const map: Record<string, number> = { Digit1: 1, Digit2: 2, Digit3: 3, Digit4: 4, Digit5: 5, Digit6: 6, KeyN: 0, KeyR: -1, Digit0: 0 };
-      if (ev.code in map && !ev.repeat) sim.shift(map[ev.code]);
+      if (ev.code in map && !ev.repeat) sim.shift(map[ev.code]!);
     };
     const up = (ev: KeyboardEvent) => {
       if (ev.code === "Space" || ev.code === "ArrowUp" || ev.code === "KeyW") sim.throttleIn = 0;
