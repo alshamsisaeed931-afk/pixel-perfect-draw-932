@@ -36,7 +36,7 @@ export function Seg<T extends string | number>({ value, options, onChange }: { v
 }
 
 const ang = (v: number) => (135 + 270 * v) * (Math.PI / 180);
-const pt = (r: number, v: number) => [100 + r * Math.cos(ang(v)), 100 + r * Math.sin(ang(v))] as const;
+const pt = (r: number, v: number) => [Math.round((100 + r * Math.cos(ang(v))) * 100) / 100, Math.round((100 + r * Math.sin(ang(v))) * 100) / 100] as const;
 function arc(r: number, a: number, b: number) {
   const [x1, y1] = pt(r, a), [x2, y2] = pt(r, b);
   return `M ${x1} ${y1} A ${r} ${r} 0 ${(b - a) * 270 > 180 ? 1 : 0} 1 ${x2} ${y2}`;
