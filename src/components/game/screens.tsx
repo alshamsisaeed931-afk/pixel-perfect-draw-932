@@ -24,7 +24,7 @@ function useKeys() {
       if (ev.code === "ShiftLeft" || ev.code === "KeyC") sim.clutchIn = 1;
       if (ev.code === "KeyS" && !ev.repeat) sim.startStop();
       const map: Record<string, number> = { Digit1: 1, Digit2: 2, Digit3: 3, Digit4: 4, Digit5: 5, Digit6: 6, KeyN: 0, KeyR: -1, Digit0: 0 };
-      if (ev.code in map && !ev.repeat) sim.shift(map[ev.code]);
+      if (ev.code in map && !ev.repeat) sim.shift(map[ev.code]!);
     };
     const up = (ev: KeyboardEvent) => {
       if (ev.code === "Space" || ev.code === "ArrowUp" || ev.code === "KeyW") sim.throttleIn = 0;
@@ -47,7 +47,7 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
     <div className="grid gap-3 landscape:grid-cols-2">
       <div className="space-y-3">
         {children}
-        <div className="metal relative mx-auto aspect-square w-full max-w-[340px] rounded-full p-1">
+        <div className="metal relative mx-auto aspect-square w-full max-w-[290px] rounded-full p-1">
           <Tach rpm={s.rpm} max={tachMax(e)} redline={tuning.limiter} gear={s.gear} cut={s.cut} glow={settings.graphics === "high"} sub={e.layout} />
         </div>
         <div className="grid grid-cols-4 gap-1.5">
@@ -68,13 +68,13 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
           ))}
         </div>
         <div className="grid grid-cols-[1fr_auto_1.4fr] items-stretch gap-3">
-          <Pedal label="Clutch" variant="clutch" className="h-44" onChange={(v) => { sim.ensureAudio(); sim.clutchIn = v; }} />
+          <Pedal label="Clutch" variant="clutch" className="h-36" onChange={(v) => { sim.ensureAudio(); sim.clutchIn = v; }} />
           <button onClick={() => sim.startStop()}
             className={cn("font-display flex h-20 w-20 flex-col items-center justify-center self-center rounded-full border-4 text-[10px] font-bold tracking-widest uppercase",
               s.on || s.starting ? "border-primary bg-primary/20 text-primary glow" : "border-metal metal text-foreground")}>
             <Power className="mb-0.5 h-6 w-6" />{s.starting ? "..." : s.on ? "Stop" : "Start"}
           </button>
-          <Pedal label="Gas" className="h-44" onChange={(v) => { sim.ensureAudio(); sim.throttleIn = v; }} />
+          <Pedal label="Gas" className="h-36" onChange={(v) => { sim.ensureAudio(); sim.throttleIn = v; }} />
         </div>
         <Msg />
         <p className="hidden text-center text-xs text-muted-foreground md:block">Keys: S start · Space gas · C clutch · 1-6 / N / R gears</p>
@@ -192,7 +192,7 @@ export function TuneScreen() {
           <div className="space-y-4">
             <Seg value={t.induction} onChange={(v) => setTuning({ induction: v })} options={[{ v: "na", l: "NA" }, { v: "turbo", l: "Turbo" }, { v: "twin", l: "Twin" }, { v: "super", l: "S/C" }]} />
             <Row label="Boost pressure" value={forced ? `${t.boost} psi` : "—"}>
-              <Slider disabled={!forced} min={2} max={40} step={1} value={[t.boost]} onValueChange={([v]) => setTuning({ boost: v })} />
+              <Slider disabled={!forced} min={2} max={40} step={1} value={[t.boost]} onValueChange={([v]) => setTuning({ boost: v ?? 0 })} />
             </Row>
             <Row label="Wastegate / blow-off sound"><Seg value={t.wastegate} onChange={(v) => setTuning({ wastegate: v })} options={[{ v: "bov", l: "BOV" }, { v: "flutter", l: "Flutter" }, { v: "off", l: "Off" }]} /></Row>
           </div>
@@ -200,14 +200,14 @@ export function TuneScreen() {
         <Panel title="Exhaust">
           <div className="space-y-4">
             <Seg value={t.exhaust} onChange={(v) => setTuning({ exhaust: v })} options={[{ v: "stock", l: "Stock" }, { v: "sport", l: "Sport" }, { v: "straight", l: "Straight" }, { v: "race", l: "Race" }]} />
-            <Row label="Muffler" value={`${Math.round(t.muffler * 100)}%`}><Slider min={0} max={1} step={0.05} value={[t.muffler]} onValueChange={([v]) => setTuning({ muffler: v })} /></Row>
+            <Row label="Muffler" value={`${Math.round(t.muffler * 100)}%`}><Slider min={0} max={1} step={0.05} value={[t.muffler]} onValueChange={([v]) => setTuning({ muffler: v ?? 0 })} /></Row>
             <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Pops & bangs</span><Switch checked={t.pops} onCheckedChange={(v) => setTuning({ pops: v })} /></div>
           </div>
         </Panel>
         <Panel title="Engine management">
           <div className="space-y-4">
-            <Row label="Idle speed" value={`${e.idle + t.idleOffset} rpm`}><Slider min={-300} max={600} step={25} value={[t.idleOffset]} onValueChange={([v]) => setTuning({ idleOffset: v })} /></Row>
-            <Row label="Rev limiter" value={`${t.limiter} rpm`}><Slider min={Math.round(e.redline * 0.6)} max={Math.min(tachMax(e), Math.round(e.redline * 1.1))} step={100} value={[t.limiter]} onValueChange={([v]) => setTuning({ limiter: v })} /></Row>
+            <Row label="Idle speed" value={`${e.idle + t.idleOffset} rpm`}><Slider min={-300} max={600} step={25} value={[t.idleOffset]} onValueChange={([v]) => setTuning({ idleOffset: v ?? 0 })} /></Row>
+            <Row label="Rev limiter" value={`${t.limiter} rpm`}><Slider min={Math.round(e.redline * 0.6)} max={Math.min(tachMax(e), Math.round(e.redline * 1.1))} step={100} value={[t.limiter]} onValueChange={([v]) => setTuning({ limiter: v ?? 0 })} /></Row>
             <Seg value={t.limiterType} onChange={(v) => setTuning({ limiterType: v })} options={[{ v: "hard", l: "Hard cut" }, { v: "soft", l: "Soft cut" }]} />
           </div>
         </Panel>
@@ -331,7 +331,7 @@ export function DragScreen() {
             className="font-display flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-bold text-primary-foreground uppercase disabled:opacity-50">
             <Play className="h-4 w-4" />{phase === "idle" ? "Stage" : phase === "stage" ? "Wait for green…" : phase === "race" ? "Go go go!" : "Race again"}
           </button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">Hold clutch, select 1st, build revs, release on green. Best: {g.best[e.id] ? g.best[e.id].toFixed(2) + "s" : "—"}</p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">Hold clutch, select 1st, build revs, release on green. Best: {g.best[e.id] ? g.best[e.id]!.toFixed(2) + "s" : "—"}</p>
         </div>
       </Panel>
     </Cockpit>
@@ -399,7 +399,7 @@ export function SettingsScreen() {
   const { settings: st, setSettings, resetAll } = useGame();
   const [confirm, setConfirm] = useState(false);
   const vol = (k: "master" | "engine" | "turbo" | "exhaust" | "ambient", l: string) => (
-    <Row key={k} label={l} value={`${Math.round(st[k] * 100)}%`}><Slider min={0} max={1} step={0.05} value={[st[k]]} onValueChange={([v]) => setSettings({ [k]: v })} /></Row>
+    <Row key={k} label={l} value={`${Math.round(st[k] * 100)}%`}><Slider min={0} max={1} step={0.05} value={[st[k]]} onValueChange={([v]) => setSettings({ [k]: v ?? 0 })} /></Row>
   );
   const sw = (k: "vibration" | "revMatch" | "autoClutch", l: string, d: string) => (
     <div key={k} className="flex items-center justify-between gap-3"><div><div className="text-sm">{l}</div><div className="text-xs text-muted-foreground">{d}</div></div><Switch checked={st[k]} onCheckedChange={(v) => setSettings({ [k]: v })} /></div>

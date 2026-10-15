@@ -34,7 +34,7 @@ export const ENGINES: Engine[] = [
   E({ id: "single", name: "Dirt Bike Single 450", layout: "1", cat: "Moto", cyl: 1, idle: 1600, redline: 11500, peakT: 50, peakTRpm: 8500, induction: "na", boost: 0, spool: 3000, inertia: 0.015, mass: 210, uneven: 0.2, rasp: 0.6, bass: 0.3, clatter: 0.2, desc: "Thumping, snappy single." }),
 ];
 
-export const engineById = (id: string) => ENGINES.find((e) => e.id === id) ?? ENGINES[0];
+export const engineById = (id: string): Engine => ENGINES.find((e) => e.id === id) ?? ENGINES[0]!;
 
 export type Tuning = {
   induction: Induction; boost: number; wastegate: "bov" | "flutter" | "off";

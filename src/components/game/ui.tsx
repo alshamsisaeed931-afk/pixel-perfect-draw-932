@@ -36,7 +36,7 @@ export function Seg<T extends string | number>({ value, options, onChange }: { v
 }
 
 const ang = (v: number) => (135 + 270 * v) * (Math.PI / 180);
-const pt = (r: number, v: number) => [100 + r * Math.cos(ang(v)), 100 + r * Math.sin(ang(v))] as const;
+const pt = (r: number, v: number) => [Math.round((100 + r * Math.cos(ang(v))) * 100) / 100, Math.round((100 + r * Math.sin(ang(v))) * 100) / 100] as const;
 function arc(r: number, a: number, b: number) {
   const [x1, y1] = pt(r, a), [x2, y2] = pt(r, b);
   return `M ${x1} ${y1} A ${r} ${r} 0 ${(b - a) * 270 > 180 ? 1 : 0} 1 ${x2} ${y2}`;
@@ -66,12 +66,12 @@ export function Tach({ rpm, max, redline, gear, cut, glow = true, sub }: { rpm: 
       <path d={arc(91, 0, Math.max(0.001, v))} fill="none" className={inRed ? "stroke-primary" : "stroke-warn"} strokeWidth="3" filter={glow ? "url(#gl)" : undefined} />
       {ticks}
       <text x="100" y="72" textAnchor="middle" className="fill-muted-foreground font-display" fontSize="7" letterSpacing="2">RPM x1000</text>
-      <text x="100" y="128" textAnchor="middle" className={cut || inRed ? "fill-primary font-mono" : "fill-foreground font-mono"} fontSize="22">{Math.round(rpm)}</text>
-      <text x="100" y="108" textAnchor="middle" className="fill-foreground font-display" fontSize="26" fontWeight="700">{g}</text>
-      {sub && <text x="100" y="146" textAnchor="middle" className="fill-muted-foreground font-display" fontSize="9">{sub}</text>}
+      <text x="100" y="150" textAnchor="middle" className={cut || inRed ? "fill-primary font-mono" : "fill-foreground font-mono"} fontSize="22">{Math.round(rpm)}</text>
+      <text x="100" y="128" textAnchor="middle" className="fill-foreground font-display" fontSize="24" fontWeight="700">{g}</text>
+      {sub && <text x="100" y="164" textAnchor="middle" className="fill-muted-foreground font-display" fontSize="8">{sub}</text>}
       <line x1="100" y1="100" x2={nx} y2={ny} className="stroke-primary" strokeWidth="3" strokeLinecap="round" filter={glow ? "url(#gl)" : undefined} />
       <circle cx="100" cy="100" r="7" className="fill-metal stroke-background" strokeWidth="2" />
-      <circle cx="100" cy="176" r="4" className={cut ? "fill-primary" : "fill-muted"} filter={glow && cut ? "url(#gl)" : undefined} />
+      <circle cx="100" cy="182" r="4" className={cut ? "fill-primary" : "fill-muted"} filter={glow && cut ? "url(#gl)" : undefined} />
     </svg>
   );
 }
