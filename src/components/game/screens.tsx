@@ -331,7 +331,7 @@ export function DragScreen() {
             className="font-display flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-bold text-primary-foreground uppercase disabled:opacity-50">
             <Play className="h-4 w-4" />{phase === "idle" ? "Stage" : phase === "stage" ? "Wait for green…" : phase === "race" ? "Go go go!" : "Race again"}
           </button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">Hold clutch, select 1st, build revs, release on green. Best: {g.best[e.id] ? g.best[e.id].toFixed(2) + "s" : "—"}</p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">Hold clutch, select 1st, build revs, release on green. Best: {g.best[e.id] ? g.best[e.id]!.toFixed(2) + "s" : "—"}</p>
         </div>
       </Panel>
     </Cockpit>
