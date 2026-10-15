@@ -192,7 +192,7 @@ export function TuneScreen() {
           <div className="space-y-4">
             <Seg value={t.induction} onChange={(v) => setTuning({ induction: v })} options={[{ v: "na", l: "NA" }, { v: "turbo", l: "Turbo" }, { v: "twin", l: "Twin" }, { v: "super", l: "S/C" }]} />
             <Row label="Boost pressure" value={forced ? `${t.boost} psi` : "—"}>
-              <Slider disabled={!forced} min={2} max={40} step={1} value={[t.boost]} onValueChange={([v]) => setTuning({ boost: v })} />
+              <Slider disabled={!forced} min={2} max={40} step={1} value={[t.boost]} onValueChange={([v]) => setTuning({ boost: v ?? 0 })} />
             </Row>
             <Row label="Wastegate / blow-off sound"><Seg value={t.wastegate} onChange={(v) => setTuning({ wastegate: v })} options={[{ v: "bov", l: "BOV" }, { v: "flutter", l: "Flutter" }, { v: "off", l: "Off" }]} /></Row>
           </div>
@@ -200,14 +200,14 @@ export function TuneScreen() {
         <Panel title="Exhaust">
           <div className="space-y-4">
             <Seg value={t.exhaust} onChange={(v) => setTuning({ exhaust: v })} options={[{ v: "stock", l: "Stock" }, { v: "sport", l: "Sport" }, { v: "straight", l: "Straight" }, { v: "race", l: "Race" }]} />
-            <Row label="Muffler" value={`${Math.round(t.muffler * 100)}%`}><Slider min={0} max={1} step={0.05} value={[t.muffler]} onValueChange={([v]) => setTuning({ muffler: v })} /></Row>
+            <Row label="Muffler" value={`${Math.round(t.muffler * 100)}%`}><Slider min={0} max={1} step={0.05} value={[t.muffler]} onValueChange={([v]) => setTuning({ muffler: v ?? 0 })} /></Row>
             <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Pops & bangs</span><Switch checked={t.pops} onCheckedChange={(v) => setTuning({ pops: v })} /></div>
           </div>
         </Panel>
         <Panel title="Engine management">
           <div className="space-y-4">
-            <Row label="Idle speed" value={`${e.idle + t.idleOffset} rpm`}><Slider min={-300} max={600} step={25} value={[t.idleOffset]} onValueChange={([v]) => setTuning({ idleOffset: v })} /></Row>
-            <Row label="Rev limiter" value={`${t.limiter} rpm`}><Slider min={Math.round(e.redline * 0.6)} max={Math.min(tachMax(e), Math.round(e.redline * 1.1))} step={100} value={[t.limiter]} onValueChange={([v]) => setTuning({ limiter: v })} /></Row>
+            <Row label="Idle speed" value={`${e.idle + t.idleOffset} rpm`}><Slider min={-300} max={600} step={25} value={[t.idleOffset]} onValueChange={([v]) => setTuning({ idleOffset: v ?? 0 })} /></Row>
+            <Row label="Rev limiter" value={`${t.limiter} rpm`}><Slider min={Math.round(e.redline * 0.6)} max={Math.min(tachMax(e), Math.round(e.redline * 1.1))} step={100} value={[t.limiter]} onValueChange={([v]) => setTuning({ limiter: v ?? 0 })} /></Row>
             <Seg value={t.limiterType} onChange={(v) => setTuning({ limiterType: v })} options={[{ v: "hard", l: "Hard cut" }, { v: "soft", l: "Soft cut" }]} />
           </div>
         </Panel>
@@ -399,7 +399,7 @@ export function SettingsScreen() {
   const { settings: st, setSettings, resetAll } = useGame();
   const [confirm, setConfirm] = useState(false);
   const vol = (k: "master" | "engine" | "turbo" | "exhaust" | "ambient", l: string) => (
-    <Row key={k} label={l} value={`${Math.round(st[k] * 100)}%`}><Slider min={0} max={1} step={0.05} value={[st[k]]} onValueChange={([v]) => setSettings({ [k]: v })} /></Row>
+    <Row key={k} label={l} value={`${Math.round(st[k] * 100)}%`}><Slider min={0} max={1} step={0.05} value={[st[k]]} onValueChange={([v]) => setSettings({ [k]: v ?? 0 })} /></Row>
   );
   const sw = (k: "vibration" | "revMatch" | "autoClutch", l: string, d: string) => (
     <div key={k} className="flex items-center justify-between gap-3"><div><div className="text-sm">{l}</div><div className="text-xs text-muted-foreground">{d}</div></div><Switch checked={st[k]} onCheckedChange={(v) => setSettings({ [k]: v })} /></div>

@@ -15,8 +15,8 @@ type Opts = { revMatch: boolean; autoClutch: boolean; vibration: boolean };
 
 class Sim {
   audio = new EngineAudio();
-  engine: Engine = ENGINES[0];
-  tuning: Tuning = defaultTuning(ENGINES[0]);
+  engine: Engine = ENGINES[0]!;
+  tuning: Tuning = defaultTuning(ENGINES[0]!);
   opts: Opts = { revMatch: true, autoClutch: false, vibration: true };
   throttleIn = 0; clutchIn = 0;
   history: { t: number; rpm: number; boost: number }[] = [];
@@ -68,7 +68,7 @@ class Sim {
     if (this.opts.autoClutch) { this.dipT = 0.28; s.clutch = 0; }
     s.gear = g; this.audio.click(); this.buzz(10);
     if (this.opts.revMatch && g > 0 && s.on) {
-      this.blipTarget = Math.abs(s.speed) / WHEEL_R * GEAR_RATIOS[g] * FINAL * 9.549; this.blipT = 0.35;
+      this.blipTarget = Math.abs(s.speed) / WHEEL_R * (GEAR_RATIOS[g] ?? 0) * FINAL * 9.549; this.blipT = 0.35;
     }
   }
 
@@ -85,7 +85,7 @@ class Sim {
     if (!s.on) { this.msg("START THE ENGINE FIRST"); return; }
     s.dyno = true; s.gear = 4; s.clutch = 1; this.dipT = 0;
     const startRpm = Math.max(e.idle * 1.5, e.redline * 0.25);
-    s.speed = startRpm / (GEAR_RATIOS[4] * FINAL * 9.549) * WHEEL_R; s.rpm = startRpm;
+    s.speed = startRpm / (GEAR_RATIOS[4]! * FINAL * 9.549) * WHEEL_R; s.rpm = startRpm;
     this.dynoResult = []; this.lastDynoRpm = 0;
   }
 
@@ -117,8 +117,8 @@ class Sim {
       const rel = s.time - this.script.start;
       if (rel >= 0) {
         const st = this.script.steps; let v = 0;
-        for (const [tt, val] of st) if (rel >= tt) v = val;
-        th = v; if (rel > st[st.length - 1][0] + 0.2) this.script = null;
+        for (const [tt, val] of st as [number, number][]) if (rel >= tt) v = val;
+        th = v; if (rel > st[st.length - 1]![0] + 0.2) this.script = null;
       } else th = 0;
     }
     if (s.dyno) th = 1;
@@ -148,7 +148,7 @@ class Sim {
     if (tu.induction === "super" || tu.induction === "na") s.boost = target;
     else s.boost += (target - s.boost) * Math.min(1, dt / (tu.induction === "twin" ? 0.3 : 0.55) * (target < s.boost ? 2.5 : 1));
 
-    const I = e.inertia, G = GEAR_RATIOS[s.gear] * FINAL;
+    const I = e.inertia, G = (GEAR_RATIOS[s.gear] ?? 0) * FINAL;
     const mass = s.dyno ? e.mass * 0.45 : e.mass;
     const cap = e.peakT * 2.2 * (1 + s.boost / 14.7);
     const N = 8, h = dt / N;
