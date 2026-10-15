@@ -47,7 +47,7 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
     <div className="grid gap-3 landscape:grid-cols-2">
       <div className="space-y-3">
         {children}
-        <div className="metal relative mx-auto aspect-square w-full max-w-[340px] rounded-full p-1">
+        <div className="metal relative mx-auto aspect-square w-full max-w-[290px] rounded-full p-1">
           <Tach rpm={s.rpm} max={tachMax(e)} redline={tuning.limiter} gear={s.gear} cut={s.cut} glow={settings.graphics === "high"} sub={e.layout} />
         </div>
         <div className="grid grid-cols-4 gap-1.5">
@@ -68,13 +68,13 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
           ))}
         </div>
         <div className="grid grid-cols-[1fr_auto_1.4fr] items-stretch gap-3">
-          <Pedal label="Clutch" variant="clutch" className="h-44" onChange={(v) => { sim.ensureAudio(); sim.clutchIn = v; }} />
+          <Pedal label="Clutch" variant="clutch" className="h-36" onChange={(v) => { sim.ensureAudio(); sim.clutchIn = v; }} />
           <button onClick={() => sim.startStop()}
             className={cn("font-display flex h-20 w-20 flex-col items-center justify-center self-center rounded-full border-4 text-[10px] font-bold tracking-widest uppercase",
               s.on || s.starting ? "border-primary bg-primary/20 text-primary glow" : "border-metal metal text-foreground")}>
             <Power className="mb-0.5 h-6 w-6" />{s.starting ? "..." : s.on ? "Stop" : "Start"}
           </button>
-          <Pedal label="Gas" className="h-44" onChange={(v) => { sim.ensureAudio(); sim.throttleIn = v; }} />
+          <Pedal label="Gas" className="h-36" onChange={(v) => { sim.ensureAudio(); sim.throttleIn = v; }} />
         </div>
         <Msg />
         <p className="hidden text-center text-xs text-muted-foreground md:block">Keys: S start · Space gas · C clutch · 1-6 / N / R gears</p>
