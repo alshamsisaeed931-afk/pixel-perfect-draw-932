@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { LineChart, Panel, Pedal, Seg, Stat, Tach } from "./ui";
+import { Shifter } from "./shifter";
 
 export const tachMax = (e: Engine) => (e.redline > 10000 ? 20000 : 10000);
 export function curve(e: Engine, t: Tuning) {
@@ -42,7 +43,6 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
   const e = engineById(engineId);
   const spd = Math.abs(s.speed) * MS_TO[settings.units];
   const temp = settings.units === "metric" ? s.temp : s.temp * 1.8 + 32;
-  const gears: (number)[] = [1, 3, 5, -1, 2, 4, 6, 0];
   return (
     <div className="grid gap-3 landscape:grid-cols-2">
       <div className="space-y-3">
@@ -58,15 +58,7 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
         </div>
       </div>
       <div className="space-y-3">
-        <div className="grid grid-cols-4 gap-1.5">
-          {gears.map((g) => (
-            <button key={g} onClick={() => sim.shift(g)}
-              className={cn("font-display h-12 rounded-lg border text-lg font-bold transition-all",
-                s.gear === g ? "bg-primary text-primary-foreground glow border-primary" : "metal text-foreground active:scale-95")}>
-              {g === -1 ? "R" : g === 0 ? "N" : g}
-            </button>
-          ))}
-        </div>
+        <Shifter gear={s.gear} onShift={(gear) => sim.shift(gear)} />
         <div className="grid grid-cols-[1fr_auto_1.4fr] items-stretch gap-3">
           <Pedal label="Clutch" variant="clutch" className="h-36" onChange={(v) => { sim.ensureAudio(); sim.clutchIn = v; }} />
           <button onClick={() => sim.startStop()}

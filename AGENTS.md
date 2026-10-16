@@ -11,3 +11,4 @@
 
 - Engine audio is procedural Web Audio (src/lib/audio.ts) driven by a singleton physics sim (src/lib/sim.ts); UI reads it via useSyncExternalStore — keeps 60fps physics out of React state.
 - Game state (settings, favorites, configs) persists in localStorage via src/lib/store.tsx — no backend needed.
+- The cockpit gear selector lives in a dedicated Shifter component and delegates every selection to sim.shift; this preserves clutch checks and keeps presentation separate from physics.
