@@ -62,6 +62,9 @@
   --warn: oklch(0.82 0.17 75);
   --metal: oklch(0.55 0.008 260);
   --glow-red: 0 0 18px color-mix(in oklab, var(--primary) 70%, transparent);
+  --shifter-shadow: 0 8px 14px color-mix(in oklab, var(--background) 85%, transparent), inset 0 2px 3px var(--metal), inset 0 -3px 5px var(--background);
+  --shifter-face: radial-gradient(circle at 35% 25%, var(--metal), var(--secondary) 48%, var(--background) 95%);
+  --shifter-console: linear-gradient(145deg, var(--secondary), var(--card) 60%, var(--muted));
 }
 
 @layer base {
@@ -86,3 +89,13 @@
 @utility glow { box-shadow: var(--glow-red); }
 @utility text-glow { text-shadow: 0 0 12px color-mix(in oklab, var(--primary) 80%, transparent); }
 @utility no-select { user-select: none; -webkit-user-select: none; touch-action: none; }
+
+.shifter-console { background: var(--shifter-console); border: 1px solid var(--border); border-radius: var(--radius); }
+.shifter-plate { position: relative; height: 220px; width: 100%; }
+.shifter-knob { left: var(--lever-x); top: var(--lever-y); transform: translate(-50%, -50%); background: var(--shifter-face); border: 2px solid var(--metal); box-shadow: var(--shifter-shadow); transition: left 160ms ease, top 160ms ease; cursor: grab; }
+.shifter-knob:hover { background: var(--shifter-face); }
+.shifter-dragging { transition: none; cursor: grabbing; }
+.shifter-label-top { transform: translateY(-28px); }
+.shifter-label-bottom { transform: translateY(28px); }
+.shifter-gate:hover { background: color-mix(in oklab, var(--primary) 15%, transparent); }
+@media (prefers-reduced-motion: reduce) { .shifter-knob { transition: none; } }
