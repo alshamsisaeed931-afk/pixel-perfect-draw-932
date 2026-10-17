@@ -1,5 +1,5 @@
 import { EngineAudio, type Volumes } from "./audio";
-import { ENGINES, defaultTuning, hpFrom, steadyBoost, torqueAt, type Engine, type Tuning } from "./engines";
+import { CAM, ENGINES, defaultTuning, hpFrom, steadyBoost, torqueAt, type Engine, type Tuning } from "./engines";
 
 export const GEAR_RATIOS: Record<number, number> = { [-1]: -3.3, 0: 0, 1: 3.6, 2: 2.2, 3: 1.55, 4: 1.2, 5: 1.0, 6: 0.83 };
 const FINAL = 3.7, WHEEL_R = 0.33;
@@ -127,26 +127,34 @@ class Sim {
     const idle = e.idle + tu.idleOffset;
     if (s.on) th = Math.max(th, Math.min(0.3, Math.max(0, (idle - s.rpm) / 600)) + 0.012);
 
-    // limiter
+    // limiter (launch control holds a lower two-step limit while stationary with clutch in)
     s.cut = false;
-    if (s.on && s.rpm >= tu.limiter) {
-      if (tu.limiterType === "hard") { if (this.cutT <= 0) { this.cutT = 0.07; this.buzz(12); if (tu.pops && Math.random() < 0.6) this.audio.pop(0.8); } }
-      else th = Math.min(th, Math.max(0, 1 - (s.rpm - tu.limiter) / 150));
+    const launching = s.on && this.clutchIn > 0.5 && Math.abs(s.speed) < 1 && this.throttleIn > 0.7;
+    const effLimit = launching ? Math.min(tu.launchRpm, tu.limiter) : tu.limiter;
+    if (s.on && s.rpm >= effLimit) {
+      if (tu.limiterType === "hard" || launching) { if (this.cutT <= 0) { this.cutT = 0.07; this.buzz(12); if (tu.pops && Math.random() < 0.3 + tu.popsLevel * 0.6) this.audio.pop((0.3 + tu.popsLevel * 0.7) * (launching ? 1 : 0.8)); } }
+      else th = Math.min(th, Math.max(0, 1 - (s.rpm - effLimit) / 150));
     }
     if (this.cutT > 0) { this.cutT -= dt; th = 0; s.cut = true; }
 
     // pops on lift-off
     if (this.prevTh > 0.45 && this.throttleIn < 0.1 && s.rpm > e.redline * 0.45 && !s.dyno) {
-      if (tu.pops) this.popT = 0.5 + Math.random() * 0.6;
-      if (s.boost > tu.boost * 0.35 && (tu.induction === "turbo" || tu.induction === "twin")) { this.audio.blowoff(s.boost / Math.max(8, tu.boost)); s.boost *= 0.3; }
+      if (tu.pops) this.popT = (0.5 + Math.random() * 0.6) * (0.3 + tu.popsLevel * 1.4);
+      if (s.boost > tu.boost * 0.35 && (tu.induction === "turbo" || tu.induction === "twin") && !tu.antiLag) { this.audio.blowoff(s.boost / Math.max(8, tu.boost)); s.boost *= 0.3; }
     }
-    if (this.popT > 0) { this.popT -= dt; if (Math.random() < dt * 14) this.audio.pop(0.4 + Math.random() * 0.6); }
+    if (this.popT > 0) { this.popT -= dt; if (Math.random() < dt * (6 + tu.popsLevel * 16)) this.audio.pop((0.4 + Math.random() * 0.6) * (0.4 + tu.popsLevel * 0.8)); }
     this.prevTh = s.dyno ? 1 : this.throttleIn;
+
+    // anti-lag: keep boost alive off-throttle, with bangs
+    if (tu.antiLag && s.on && th < 0.15 && s.boost > 2 && (tu.induction === "turbo" || tu.induction === "twin")) {
+      s.boost = Math.max(s.boost * (1 - dt * 0.6), tu.boost * 0.4);
+      if (Math.random() < dt * 8 * (0.3 + tu.popsLevel)) this.audio.pop(0.5 + Math.random() * 0.5);
+    }
 
     // boost
     const target = steadyBoost(e, tu, s.rpm, th);
     if (tu.induction === "super" || tu.induction === "na") s.boost = target;
-    else s.boost += (target - s.boost) * Math.min(1, dt / (tu.induction === "twin" ? 0.3 : 0.55) * (target < s.boost ? 2.5 : 1));
+    else s.boost += (target - s.boost) * Math.min(1, dt / ((tu.induction === "twin" ? 0.3 : 0.55) / tu.spoolRate) * (target < s.boost ? 2.5 : 1));
 
     const I = e.inertia, G = (GEAR_RATIOS[s.gear] ?? 0) * FINAL;
     const mass = s.dyno ? e.mass * 0.45 : e.mass;
@@ -169,6 +177,11 @@ class Sim {
       if (sign !== 0 && Math.sign(v) !== sign && Math.abs(F) < 160) v = 0;
       if (s.speed === 0 && Math.abs(F) < 160) v = 0;
       s.speed = v;
+    }
+    // cam lope: aggressive cams make the idle hunt and shake
+    const lope = CAM[tu.cam].lope;
+    if (s.on && !s.starting && lope > 0 && th < 0.15 && s.rpm < idle * 1.6) {
+      s.rpm += Math.sin(s.time * (6 + lope * 5)) * lope * idle * 0.05 + Math.sin(s.time * 23.7) * lope * idle * 0.02;
     }
     if (s.starting) s.rpm = 180 + Math.sin(s.time * 50) * 60;
     if (s.on && s.rpm < idle * 0.35) { s.on = false; s.dyno = false; this.msg("STALLED!"); this.buzz(150); }

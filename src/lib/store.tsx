@@ -31,7 +31,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [st, setSt] = useState<State>(initial);
   const loaded = useRef(false);
   useEffect(() => {
-    try { const raw = localStorage.getItem(KEY); if (raw) { const p = JSON.parse(raw); setSt((s) => ({ ...s, ...p, settings: { ...DEFAULT_SETTINGS, ...p.settings } })); } } catch { /* ignore */ }
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        setSt((s) => ({
+          ...s, ...p,
+          settings: { ...DEFAULT_SETTINGS, ...p.settings },
+          tuning: { ...defaultTuning(engineById(p.engineId ?? "v8")), ...p.tuning },
+        }));
+      }
+    } catch { /* ignore */ }
     loaded.current = true;
   }, []);
   useEffect(() => { if (loaded.current) localStorage.setItem(KEY, JSON.stringify(st)); }, [st]);
