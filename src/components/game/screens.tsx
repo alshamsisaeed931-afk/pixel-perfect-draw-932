@@ -203,6 +203,35 @@ export function TuneScreen() {
             <Seg value={t.limiterType} onChange={(v) => setTuning({ limiterType: v })} options={[{ v: "hard", l: "Hard cut" }, { v: "soft", l: "Soft cut" }]} />
           </div>
         </Panel>
+        <Panel title="Performance">
+          <div className="space-y-4">
+            <Row label="Camshaft"><Seg value={t.cam} onChange={(v) => setTuning({ cam: v })} options={[{ v: "stock", l: "Stock" }, { v: "street", l: "Street" }, { v: "race", l: "Race" }]} /></Row>
+            <Row label="Ignition timing" value={t.timing < 0.45 ? "Retarded" : t.timing > 0.55 ? "Advanced" : "Stock"}>
+              <Slider min={0} max={1} step={0.05} value={[t.timing]} onValueChange={([v]) => setTuning({ timing: v ?? 0.5 })} />
+            </Row>
+            <Row label="Fuel mixture" value={t.fuel < 0.4 ? "Lean" : t.fuel > 0.62 ? "Rich" : "Stoich"}>
+              <Slider min={0} max={1} step={0.05} value={[t.fuel]} onValueChange={([v]) => setTuning({ fuel: v ?? 0.5 })} />
+            </Row>
+            <Row label="Turbo spool rate" value={forced ? `${t.spoolRate.toFixed(1)}x` : "—"}>
+              <Slider disabled={!forced} min={0.5} max={2} step={0.1} value={[t.spoolRate]} onValueChange={([v]) => setTuning({ spoolRate: v ?? 1 })} />
+            </Row>
+          </div>
+        </Panel>
+        <Panel title="Launch & pops">
+          <div className="space-y-4">
+            <Row label="Pops intensity" value={`${Math.round(t.popsLevel * 100)}%`}>
+              <Slider min={0} max={1} step={0.05} value={[t.popsLevel]} onValueChange={([v]) => setTuning({ popsLevel: v ?? 0.5 })} />
+            </Row>
+            <Row label="Launch control" value={`${t.launchRpm} rpm`}>
+              <Slider min={Math.round(e.idle * 1.5 / 100) * 100} max={Math.round(e.redline * 0.8 / 100) * 100} step={100} value={[t.launchRpm]} onValueChange={([v]) => setTuning({ launchRpm: v ?? 3000 })} />
+            </Row>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Anti-lag (keeps turbo boosting)</span>
+              <Switch checked={t.antiLag} onCheckedChange={(v) => setTuning({ antiLag: v })} disabled={!forced || t.induction === "super"} />
+            </div>
+            <p className="text-xs text-muted-foreground">Launch control: hold clutch + full throttle while stopped — the engine holds at the set RPM.</p>
+          </div>
+        </Panel>
         <Panel title="Test it">
           <div className="grid grid-cols-[auto_1fr] gap-3">
             <button onClick={() => sim.startStop()} className={cn("font-display h-24 w-20 rounded-xl border-2 text-xs font-bold uppercase", s.on ? "border-primary text-primary" : "border-metal")}>
