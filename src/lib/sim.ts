@@ -6,7 +6,7 @@ const FINAL = 3.7, WHEEL_R = 0.33;
 
 export type Snapshot = {
   on: boolean; starting: boolean; rpm: number; throttle: number; gear: number; clutch: number;
-  speed: number; dist: number; temp: number; boost: number; hp: number; torque: number; cut: boolean;
+  speed: number; dist: number; temp: number; boost: number; hp: number; torque: number; cut: boolean; spdCut: boolean;
   message: string; msgId: number; dyno: boolean; dynoId: number; time: number;
 };
 export type DynoPoint = { rpm: number; hp: number; tq: number; boost: number };
@@ -21,7 +21,7 @@ class Sim {
   throttleIn = 0; clutchIn = 0;
   history: { t: number; rpm: number; boost: number }[] = [];
   dynoResult: DynoPoint[] = [];
-  private s: Snapshot = { on: false, starting: false, rpm: 0, throttle: 0, gear: 0, clutch: 1, speed: 0, dist: 0, temp: 45, boost: 0, hp: 0, torque: 0, cut: false, message: "", msgId: 0, dyno: false, dynoId: 0, time: 0 };
+  private s: Snapshot = { on: false, starting: false, rpm: 0, throttle: 0, gear: 0, clutch: 1, speed: 0, dist: 0, temp: 45, boost: 0, hp: 0, torque: 0, cut: false, spdCut: false, message: "", msgId: 0, dyno: false, dynoId: 0, time: 0 };
   private snap: Snapshot = { ...this.s };
   private listeners = new Set<() => void>();
   private raf = 0; private last = 0;
@@ -136,6 +136,10 @@ class Sim {
       else th = Math.min(th, Math.max(0, 1 - (s.rpm - effLimit) / 150));
     }
     if (this.cutT > 0) { this.cutT -= dt; th = 0; s.cut = true; }
+
+    // speed limiter: cut throttle at the set top speed
+    s.spdCut = false;
+    if (s.on && tu.speedLimit > 0 && Math.abs(s.speed) * 3.6 >= tu.speedLimit) { th = 0; s.spdCut = true; }
 
     // pops on lift-off
     if (this.prevTh > 0.45 && this.throttleIn < 0.1 && s.rpm > e.redline * 0.45 && !s.dyno) {
