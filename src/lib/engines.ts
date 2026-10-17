@@ -61,18 +61,31 @@ export const EXHAUST = {
 export function steadyBoost(e: Engine, t: Tuning, rpm: number, th = 1) {
   if (t.induction === "na") return 0;
   if (t.induction === "super") return t.boost * (0.35 + 0.65 * rpm / e.redline) * (0.3 + 0.7 * th);
-  const spoolStart = t.induction === "twin" ? e.spool * 0.8 : e.spool;
+  const spoolStart = (t.induction === "twin" ? e.spool * 0.8 : e.spool) / t.spoolRate;
   const s = Math.min(1, Math.max(0, (rpm - spoolStart) / (e.redline * 0.3)));
   return t.boost * s * th;
 }
+
+export const CAM = {
+  stock: { low: 1, high: 1, lope: 0 },
+  street: { low: 0.96, high: 1.04, lope: 0.35 },
+  race: { low: 0.88, high: 1.1, lope: 0.8 },
+};
 
 export function torqueAt(e: Engine, t: Tuning, rpm: number, boost: number) {
   const x = (rpm - e.peakTRpm) / e.redline;
   let base = e.peakT * Math.max(0.2, 1 - 2 * x * x);
   if (rpm > e.redline) base *= Math.max(0, 1 - (rpm - e.redline) / (e.redline * 0.15));
+  const cam = CAM[t.cam];
+  const camMult = rpm < e.peakTRpm
+    ? 1 - (1 - cam.low) * (1 - rpm / e.peakTRpm)
+    : 1 + (cam.high - 1) * Math.min(1, (rpm - e.peakTRpm) / (e.redline - e.peakTRpm));
+  base *= camMult;
   const naBoosted = e.induction === "na" ? 0.8 : 0.85;
   const boostMult = 1 + (boost / 14.7) * naBoosted - (e.induction !== "na" ? (e.boost / 14.7) * 0.85 : 0);
-  return base * Math.max(0.4, boostMult) * EXHAUST[t.exhaust].mult * (1 - t.muffler * 0.04);
+  const timingMult = 0.92 + t.timing * 0.16; // 0.92x retarded … 1.08x advanced
+  const fuelMult = 1.02 - Math.abs(t.fuel - 0.55) * 0.18; // richest/leanest lose power
+  return base * Math.max(0.4, boostMult) * EXHAUST[t.exhaust].mult * (1 - t.muffler * 0.04) * timingMult * fuelMult;
 }
 
 export const hpFrom = (tq: number, rpm: number) => (tq * rpm) / 7121;
