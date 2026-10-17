@@ -40,11 +40,15 @@ export type Tuning = {
   induction: Induction; boost: number; wastegate: "bov" | "flutter" | "off";
   exhaust: "stock" | "sport" | "straight" | "race"; muffler: number; pops: boolean;
   idleOffset: number; limiter: number; limiterType: "hard" | "soft";
+  cam: "stock" | "street" | "race"; timing: number; fuel: number;
+  spoolRate: number; popsLevel: number; launchRpm: number; antiLag: boolean;
 };
 
 export const defaultTuning = (e: Engine): Tuning => ({
   induction: e.induction, boost: e.boost || 12, wastegate: "bov", exhaust: "sport", muffler: 0.4,
   pops: e.cat !== "Diesel", idleOffset: 0, limiter: e.redline, limiterType: "hard",
+  cam: "stock", timing: 0.5, fuel: 0.5, spoolRate: 1, popsLevel: 0.5,
+  launchRpm: Math.round(e.redline * 0.45 / 100) * 100, antiLag: false,
 });
 
 export const EXHAUST = {
