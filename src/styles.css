@@ -91,7 +91,8 @@
 @utility no-select { user-select: none; -webkit-user-select: none; touch-action: none; }
 
 .shifter-console { background: var(--shifter-console); border: 1px solid var(--border); border-radius: var(--radius); }
-.shifter-plate { position: relative; height: 220px; width: 100%; }
+.shifter-plate { position: relative; height: 150px; width: 100%; }
+@media (min-width: 640px) { .shifter-plate { height: 220px; } }
 .shifter-knob { left: var(--lever-x); top: var(--lever-y); transform: translate(-50%, -50%); background: var(--shifter-face); border: 2px solid var(--metal); box-shadow: var(--shifter-shadow); transition: left 160ms ease, top 160ms ease; cursor: grab; }
 .shifter-knob:hover { background: var(--shifter-face); }
 .shifter-dragging { transition: none; cursor: grabbing; }
