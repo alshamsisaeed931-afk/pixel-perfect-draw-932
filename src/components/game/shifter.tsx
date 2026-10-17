@@ -53,7 +53,7 @@ export function Shifter({ gear, onShift }: { gear: number; onShift: (gear: numbe
           <Button key={p.gear} variant="ghost" aria-label={`Select ${p.gear === 0 ? "neutral" : p.gear === -1 ? "reverse" : `gear ${p.gear}`}`} aria-pressed={gear === p.gear}
             onClick={() => onShift(p.gear)}
             style={{ left: `${p.x}%`, top: `${p.y}%` }}
-            className={cn("shifter-gate absolute h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full p-0 font-mono text-lg", gear === p.gear ? "text-primary" : "text-foreground")}>
+            className={cn("shifter-gate absolute h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full p-0 font-mono text-sm sm:h-11 sm:w-11 sm:text-lg", gear === p.gear ? "text-primary" : "text-foreground")}>
             <span className={p.y < 50 ? "shifter-label-top" : p.y > 50 ? "shifter-label-bottom" : ""}>{label(p.gear)}</span>
           </Button>
         ))}
@@ -64,8 +64,8 @@ export function Shifter({ gear, onShift }: { gear: number; onShift: (gear: numbe
         }} onPointerMove={move} onPointerUp={release} onPointerCancel={release} onLostPointerCapture={release}
           onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); onShift(0); } }}
           style={{ "--lever-x": `${displayed.x}%`, "--lever-y": `${displayed.y}%` } as CSSProperties}
-          className={cn("shifter-knob no-select absolute z-10 h-14 w-14 rounded-full p-0", point && "shifter-dragging")}>
-          <svg viewBox="0 0 40 40" aria-hidden="true" className="!h-8 !w-8">
+          className={cn("shifter-knob no-select absolute z-10 h-11 w-11 rounded-full p-0 sm:h-14 sm:w-14", point && "shifter-dragging")}>
+          <svg viewBox="0 0 40 40" aria-hidden="true" className="!h-6 !w-6 sm:!h-8 sm:!w-8">
             <path d="M10 9V31 M20 9V31 M30 9V31 M10 20H30" fill="none" className="stroke-foreground" strokeWidth="1.4" />
           </svg>
         </Button>

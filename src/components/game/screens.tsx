@@ -44,29 +44,29 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
   const spd = Math.abs(s.speed) * MS_TO[settings.units];
   const temp = settings.units === "metric" ? s.temp : s.temp * 1.8 + 32;
   return (
-    <div className="grid gap-3 landscape:grid-cols-2">
-      <div className="space-y-3">
+    <div className="grid gap-2 landscape:grid-cols-2 sm:gap-3">
+      <div className="space-y-2 sm:space-y-3">
         {children}
-        <div className="metal relative mx-auto aspect-square w-full max-w-[290px] rounded-full p-1">
+        <div className="metal relative mx-auto aspect-square w-full max-w-[210px] rounded-full p-1 sm:max-w-[290px]">
           <Tach rpm={s.rpm} max={tachMax(e)} redline={tuning.limiter} gear={s.gear} cut={s.cut} glow={settings.graphics === "high"} sub={e.layout} />
         </div>
         <div className="grid grid-cols-4 gap-1.5">
-          <Stat label="Speed" value={spd.toFixed(0)} unit={settings.units === "metric" ? "km/h" : "mph"} />
+          <Stat label="Speed" value={spd.toFixed(0)} unit={settings.units === "metric" ? "km/h" : "mph"} alert={s.spdCut} />
           <Stat label="Temp" value={temp.toFixed(0)} unit={settings.units === "metric" ? "°C" : "°F"} alert={s.temp > 105} />
           <Stat label="Boost" value={s.boost.toFixed(1)} unit="psi" />
           <Stat label="Power" value={s.hp.toFixed(0)} unit="hp" />
         </div>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         <Shifter gear={s.gear} onShift={(gear) => sim.shift(gear)} />
-        <div className="grid grid-cols-[1fr_auto_1.4fr] items-stretch gap-3">
-          <Pedal label="Clutch" variant="clutch" className="h-36" onChange={(v) => { sim.ensureAudio(); sim.clutchIn = v; }} />
+        <div className="grid grid-cols-[1fr_auto_1.4fr] items-stretch gap-2 sm:gap-3">
+          <Pedal label="Clutch" variant="clutch" className="h-24 sm:h-36" onChange={(v) => { sim.ensureAudio(); sim.clutchIn = v; }} />
           <button onClick={() => sim.startStop()}
-            className={cn("font-display flex h-20 w-20 flex-col items-center justify-center self-center rounded-full border-4 text-[10px] font-bold tracking-widest uppercase",
+            className={cn("font-display flex h-14 w-14 flex-col items-center justify-center self-center rounded-full border-4 text-[9px] font-bold tracking-widest uppercase sm:h-20 sm:w-20 sm:text-[10px]",
               s.on || s.starting ? "border-primary bg-primary/20 text-primary glow" : "border-metal metal text-foreground")}>
-            <Power className="mb-0.5 h-6 w-6" />{s.starting ? "..." : s.on ? "Stop" : "Start"}
+            <Power className="mb-0.5 h-4 w-4 sm:h-6 sm:w-6" />{s.starting ? "..." : s.on ? "Stop" : "Start"}
           </button>
-          <Pedal label="Gas" className="h-36" onChange={(v) => { sim.ensureAudio(); sim.throttleIn = v; }} />
+          <Pedal label="Gas" className="h-24 sm:h-36" onChange={(v) => { sim.ensureAudio(); sim.throttleIn = v; }} />
         </div>
         <Msg />
         <p className="hidden text-center text-xs text-muted-foreground md:block">Keys: S start · Space gas · C clutch · 1-6 / N / R gears</p>
@@ -201,6 +201,9 @@ export function TuneScreen() {
             <Row label="Idle speed" value={`${e.idle + t.idleOffset} rpm`}><Slider min={-300} max={600} step={25} value={[t.idleOffset]} onValueChange={([v]) => setTuning({ idleOffset: v ?? 0 })} /></Row>
             <Row label="Rev limiter" value={`${t.limiter} rpm`}><Slider min={Math.round(e.redline * 0.6)} max={Math.min(tachMax(e), Math.round(e.redline * 1.1))} step={100} value={[t.limiter]} onValueChange={([v]) => setTuning({ limiter: v ?? 0 })} /></Row>
             <Seg value={t.limiterType} onChange={(v) => setTuning({ limiterType: v })} options={[{ v: "hard", l: "Hard cut" }, { v: "soft", l: "Soft cut" }]} />
+            <Row label="Speed limiter" value={t.speedLimit > 0 ? `${t.speedLimit} km/h` : "Off"}>
+              <Slider min={0} max={320} step={10} value={[t.speedLimit]} onValueChange={([v]) => setTuning({ speedLimit: v ?? 0 })} />
+            </Row>
           </div>
         </Panel>
         <Panel title="Performance">
