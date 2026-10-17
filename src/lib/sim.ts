@@ -178,6 +178,11 @@ class Sim {
       if (s.speed === 0 && Math.abs(F) < 160) v = 0;
       s.speed = v;
     }
+    // cam lope: aggressive cams make the idle hunt and shake
+    const lope = CAM[tu.cam].lope;
+    if (s.on && !s.starting && lope > 0 && th < 0.15 && s.rpm < idle * 1.6) {
+      s.rpm += Math.sin(s.time * (6 + lope * 5)) * lope * idle * 0.05 + Math.sin(s.time * 23.7) * lope * idle * 0.02;
+    }
     if (s.starting) s.rpm = 180 + Math.sin(s.time * 50) * 60;
     if (s.on && s.rpm < idle * 0.35) { s.on = false; s.dyno = false; this.msg("STALLED!"); this.buzz(150); }
     s.dist += Math.abs(s.speed) * dt;
