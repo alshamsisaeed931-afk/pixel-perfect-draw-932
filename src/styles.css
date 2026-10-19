@@ -104,6 +104,8 @@
 .shift-red { --shift-color: var(--primary); }
 .shift-amber { --shift-color: var(--warn); }
 .shift-green { --shift-color: var(--ok); }
+.shift-purple { --shift-color: oklch(0.66 0.22 300); }
+.shift-blue { --shift-color: oklch(0.66 0.18 250); }
 .shift-led { background: var(--muted); }
 .shift-led-on { background: var(--shift-color); box-shadow: 0 0 8px color-mix(in oklab, var(--shift-color) 70%, transparent); }
 .shift-lit { border-color: var(--shift-color); color: var(--shift-color); }
