@@ -5,8 +5,9 @@ import { GEAR_RATIOS, MS_TO, sim } from "@/lib/sim";
 import { useGame, useSim } from "@/lib/store";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LineChart, Panel, Pedal, Seg, Stat, Tach } from "./ui";
+import { LineChart, Panel, Pedal, Seg, Stat, Tach, Speedometer, ShiftLight } from "./ui";
 import { Shifter } from "./shifter";
 
 export const tachMax = (e: Engine) => (e.redline > 10000 ? 20000 : 10000);
@@ -47,8 +48,10 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
     <div className="grid gap-2 landscape:grid-cols-2 sm:gap-3">
       <div className="space-y-2 sm:space-y-3">
         {children}
-        <div className="metal relative mx-auto aspect-square w-full max-w-[210px] rounded-full p-1 sm:max-w-[290px]">
-          <Tach rpm={s.rpm} max={tachMax(e)} redline={tuning.limiter} gear={s.gear} cut={s.cut} glow={settings.graphics === "high"} sub={e.layout} />
+        <ShiftLight rpm={s.rpm} target={tuning.shiftRpm} enabled={tuning.shiftLight} running={s.on} color={tuning.shiftColor} />
+        <div className="mx-auto grid w-full max-w-[460px] grid-cols-2 items-center gap-1.5">
+          <div className="relative aspect-square min-w-0"><Tach rpm={s.rpm} max={tachMax(e)} redline={tuning.limiter} gear={s.gear} cut={s.cut} glow={settings.graphics === "high"} sub={e.layout} /></div>
+          <div className="relative aspect-square min-w-0"><Speedometer speed={spd} imperial={settings.units === "imperial"} limited={s.spdCut} /></div>
         </div>
         <div className="grid grid-cols-4 gap-1.5">
           <Stat label="Speed" value={spd.toFixed(0)} unit={settings.units === "metric" ? "km/h" : "mph"} alert={s.spdCut} />
@@ -233,6 +236,24 @@ export function TuneScreen() {
               <Switch checked={t.antiLag} onCheckedChange={(v) => setTuning({ antiLag: v })} disabled={!forced || t.induction === "super"} />
             </div>
             <p className="text-xs text-muted-foreground">Launch control: hold clutch + full throttle while stopped — the engine holds at the set RPM.</p>
+          </div>
+        </Panel>
+        <Panel title="RPM shift light">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Shift light</span><Switch aria-label="Enable RPM shift light" checked={t.shiftLight} onCheckedChange={(v) => setTuning({ shiftLight: v })} /></div>
+            <Row label="Light activation" value={`${t.shiftRpm} rpm`}><Slider aria-label="Shift light RPM" min={Math.ceil(e.idle / 100) * 100} max={tachMax(e)} step={100} value={[t.shiftRpm]} onValueChange={([v]) => setTuning({ shiftRpm: v ?? t.shiftRpm })} /></Row>
+            <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted-foreground">Light color</span><div className="flex gap-2">
+              {(["red", "amber", "green"] as const).map((color) => <Button key={color} variant="ghost" size="icon" aria-label={`${color} shift light`} aria-pressed={t.shiftColor === color} title={color} onClick={() => setTuning({ shiftColor: color })} className={cn("shift-light h-8 w-8 border", `shift-${color}`, t.shiftColor === color && "ring-2 ring-foreground")}><span className="shift-led shift-led-on h-4 w-4 rounded-full" /></Button>)}
+            </div></div>
+            <ShiftLight rpm={s.on ? s.rpm : t.shiftRpm} target={t.shiftRpm} enabled={t.shiftLight} running={true} color={t.shiftColor} />
+          </div>
+        </Panel>
+        <Panel title="Intake & drivetrain">
+          <div className="space-y-4">
+            <Row label="Air intake"><Seg value={t.intake} onChange={(v) => setTuning({ intake: v })} options={[{ v: "stock", l: "Stock" }, { v: "sport", l: "Sport" }, { v: "race", l: "Race" }]} /></Row>
+            <Row label="Flywheel weight" value={`${Math.round(t.flywheel * 100)}%`}><Slider aria-label="Flywheel weight" min={0.5} max={1.5} step={0.05} value={[t.flywheel]} onValueChange={([v]) => setTuning({ flywheel: v ?? 1 })} /></Row>
+            <Row label="Final drive" value={`${t.finalDrive.toFixed(2)}:1`}><Slider aria-label="Final drive" min={2.5} max={5} step={0.05} value={[t.finalDrive]} onValueChange={([v]) => setTuning({ finalDrive: v ?? 3.7 })} /></Row>
+            <Row label="Throttle response" value={`${t.throttleResponse.toFixed(1)}x`}><Slider aria-label="Throttle response" min={0.5} max={2} step={0.1} value={[t.throttleResponse]} onValueChange={([v]) => setTuning({ throttleResponse: v ?? 1 })} /></Row>
           </div>
         </Panel>
         <Panel title="Test it">
