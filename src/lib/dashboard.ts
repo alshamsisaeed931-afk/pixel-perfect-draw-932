@@ -1,4 +1,4 @@
-export type ShiftColor = "red" | "amber" | "green";
+export type ShiftColor = "red" | "amber" | "green" | "purple" | "blue";
 
 export function shiftLightState(rpm: number, target: number, enabled: boolean, running: boolean) {
   const active = enabled && running;
