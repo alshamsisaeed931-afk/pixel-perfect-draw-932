@@ -1,5 +1,7 @@
 import { useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { shiftLightState, type ShiftColor } from "@/lib/dashboard";
 
 export function Panel({ children, className, title }: { children: ReactNode; className?: string; title?: string }) {
   return (
@@ -25,11 +27,11 @@ export function Seg<T extends string | number>({ value, options, onChange }: { v
   return (
     <div className="grid gap-1 rounded-lg bg-background/60 p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0,1fr))` }}>
       {options.map((o) => (
-        <button key={String(o.v)} onClick={() => onChange(o.v)}
+        <Button variant="ghost" key={String(o.v)} onClick={() => onChange(o.v)}
           className={cn("font-display rounded-md px-1 py-2 text-xs uppercase transition-colors",
             value === o.v ? "bg-primary text-primary-foreground glow" : "text-muted-foreground hover:bg-accent")}>
           {o.l}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -76,9 +78,44 @@ export function Tach({ rpm, max, redline, gear, cut, glow = true, sub }: { rpm: 
   );
 }
 
+export function Speedometer({ speed, imperial, limited }: { speed: number; imperial: boolean; limited: boolean }) {
+  const max = imperial ? 220 : 360;
+  const step = imperial ? 40 : 60;
+  const value = Math.min(1, speed / max);
+  const [nx, ny] = pt(78, value);
+  return (
+    <svg viewBox="0 0 200 200" className="h-full w-full" role="img" aria-label={`Speedometer: ${Math.round(speed)} ${imperial ? "mph" : "km/h"}`}>
+      <circle cx="100" cy="100" r="97" className="fill-background stroke-metal" strokeWidth="3" />
+      <path d={arc(86, 0, 1)} fill="none" className="stroke-border" strokeWidth="5" />
+      <path d={arc(86, 0, Math.max(0.001, value))} fill="none" className={limited ? "stroke-primary" : "stroke-ok"} strokeWidth="4" />
+      {Array.from({ length: Math.floor(max / step) + 1 }, (_, i) => {
+        const fraction = i * step / max;
+        const [x1, y1] = pt(73, fraction), [x2, y2] = pt(83, fraction), [tx, ty] = pt(59, fraction);
+        return <g key={i}><line x1={x1} y1={y1} x2={x2} y2={y2} className="stroke-foreground" strokeWidth="2" /><text x={tx} y={ty + 4} textAnchor="middle" className="fill-muted-foreground font-mono" fontSize="10">{i * step}</text></g>;
+      })}
+      <text x="100" y="72" textAnchor="middle" className="fill-muted-foreground font-display" fontSize="9">SPEED</text>
+      <line x1="100" y1="100" x2={nx} y2={ny} className="stroke-primary" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="100" cy="100" r="7" className="fill-metal stroke-background" strokeWidth="2" />
+      <text x="100" y="146" textAnchor="middle" className={limited ? "fill-primary font-mono" : "fill-foreground font-mono"} fontSize="26">{Math.round(speed)}</text>
+      <text x="100" y="162" textAnchor="middle" className="fill-muted-foreground font-mono" fontSize="10">{imperial ? "mph" : "km/h"}</text>
+      {limited && <text x="100" y="181" textAnchor="middle" className="fill-primary font-display" fontSize="8">LIMIT</text>}
+    </svg>
+  );
+}
+
+export function ShiftLight({ rpm, target, enabled, running, color }: { rpm: number; target: number; enabled: boolean; running: boolean; color: ShiftColor }) {
+  const state = shiftLightState(rpm, target, enabled, running);
+  return (
+    <div className={cn("shift-light mx-auto flex max-w-sm items-center justify-center gap-1.5 rounded-md border px-2 py-1.5", `shift-${color}`, state.lit && "shift-lit")} role="status" aria-label={state.lit ? "Shift now" : "RPM shift light"}>
+      {Array.from({ length: 8 }, (_, i) => <span key={i} className={cn("shift-led h-2 w-3 rounded-sm sm:w-5", i < state.segments && "shift-led-on")} />)}
+      <span className="font-mono ml-1 w-12 text-center text-[10px]">{!enabled ? "OFF" : state.lit ? "SHIFT" : target}</span>
+    </div>
+  );
+}
+
 export function Pedal({ label, onChange, variant = "gas", className }: { label: string; onChange: (v: number) => void; variant?: "gas" | "clutch"; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const val = (y: number) => { const r = ref.current!.getBoundingClientRect(); return Math.min(1, Math.max(0.3, 1 - (y - r.top) / r.height + 0.15)); };
+  const val = (y: number) => { const r = ref.current?.getBoundingClientRect(); if (!r) return 0; return Math.min(1, Math.max(0.3, 1 - (y - r.top) / r.height + 0.15)); };
   const fill = useRef<HTMLDivElement>(null);
   const set = (v: number) => { onChange(v); if (fill.current) fill.current.style.height = `${v * 100}%`; };
   return (

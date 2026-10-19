@@ -1,8 +1,9 @@
 import { EngineAudio, type Volumes } from "./audio";
+import { effectiveInertia, finalDriveRatio, throttleStep } from "./dashboard";
 import { CAM, ENGINES, defaultTuning, hpFrom, steadyBoost, torqueAt, type Engine, type Tuning } from "./engines";
 
 export const GEAR_RATIOS: Record<number, number> = { [-1]: -3.3, 0: 0, 1: 3.6, 2: 2.2, 3: 1.55, 4: 1.2, 5: 1.0, 6: 0.83 };
-const FINAL = 3.7, WHEEL_R = 0.33;
+const WHEEL_R = 0.33;
 
 export type Snapshot = {
   on: boolean; starting: boolean; rpm: number; throttle: number; gear: number; clutch: number;
@@ -28,6 +29,7 @@ class Sim {
   private cutT = 0; private popT = 0; private blipT = 0; private blipTarget = 0; private dipT = 0; private startT = 0;
   private prevTh = 0; private script: { start: number; steps: [number, number][] } | null = null;
   private histT = 0; private lastDynoRpm = 0;
+  private pedalThrottle = 0;
 
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => this.listeners.delete(fn); };
   get = () => this.snap;
@@ -68,7 +70,7 @@ class Sim {
     if (this.opts.autoClutch) { this.dipT = 0.28; s.clutch = 0; }
     s.gear = g; this.audio.click(); this.buzz(10);
     if (this.opts.revMatch && g > 0 && s.on) {
-      this.blipTarget = Math.abs(s.speed) / WHEEL_R * (GEAR_RATIOS[g] ?? 0) * FINAL * 9.549; this.blipT = 0.35;
+      this.blipTarget = Math.abs(s.speed) / WHEEL_R * (GEAR_RATIOS[g] ?? 0) * finalDriveRatio(this.tuning.finalDrive) * 9.549; this.blipT = 0.35;
     }
   }
 
@@ -85,7 +87,7 @@ class Sim {
     if (!s.on) { this.msg("START THE ENGINE FIRST"); return; }
     s.dyno = true; s.gear = 4; s.clutch = 1; this.dipT = 0;
     const startRpm = Math.max(e.idle * 1.5, e.redline * 0.25);
-    s.speed = startRpm / (GEAR_RATIOS[4]! * FINAL * 9.549) * WHEEL_R; s.rpm = startRpm;
+    s.speed = startRpm / ((GEAR_RATIOS[4] ?? 1.2) * finalDriveRatio(this.tuning.finalDrive) * 9.549) * WHEEL_R; s.rpm = startRpm;
     this.dynoResult = []; this.lastDynoRpm = 0;
   }
 
@@ -112,7 +114,8 @@ class Sim {
     const cT = this.dipT > 0 ? 0 : 1 - this.clutchIn;
     s.clutch += (cT - s.clutch) * Math.min(1, dt * (cT > s.clutch ? 6 : 25));
 
-    let th = this.throttleIn;
+    this.pedalThrottle = throttleStep(this.pedalThrottle, this.throttleIn, tu.throttleResponse, dt);
+    let th = this.pedalThrottle;
     if (this.script) {
       const rel = s.time - this.script.start;
       if (rel >= 0) {
@@ -160,7 +163,7 @@ class Sim {
     if (tu.induction === "super" || tu.induction === "na") s.boost = target;
     else s.boost += (target - s.boost) * Math.min(1, dt / ((tu.induction === "twin" ? 0.3 : 0.55) / tu.spoolRate) * (target < s.boost ? 2.5 : 1));
 
-    const I = e.inertia, G = (GEAR_RATIOS[s.gear] ?? 0) * FINAL;
+    const I = effectiveInertia(e.inertia, tu.flywheel), G = (GEAR_RATIOS[s.gear] ?? 0) * finalDriveRatio(tu.finalDrive);
     const mass = s.dyno ? e.mass * 0.45 : e.mass;
     const cap = e.peakT * 2.2 * (1 + s.boost / 14.7);
     const N = 8, h = dt / N;

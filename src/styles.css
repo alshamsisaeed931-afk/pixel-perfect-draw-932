@@ -100,3 +100,10 @@
 .shifter-label-bottom { transform: translateY(28px); }
 .shifter-gate:hover { background: color-mix(in oklab, var(--primary) 15%, transparent); }
 @media (prefers-reduced-motion: reduce) { .shifter-knob { transition: none; } }
+
+.shift-red { --shift-color: var(--primary); }
+.shift-amber { --shift-color: var(--warn); }
+.shift-green { --shift-color: var(--ok); }
+.shift-led { background: var(--muted); }
+.shift-led-on { background: var(--shift-color); box-shadow: 0 0 8px color-mix(in oklab, var(--shift-color) 70%, transparent); }
+.shift-lit { border-color: var(--shift-color); color: var(--shift-color); }

@@ -1,0 +1,3 @@
+- [x] Add compact live speedometer and customizable RPM shift light.
+- [x] Add intake, flywheel, final-drive, and throttle-response tuning with real simulation effects.
+- [x] Verify persistence, tuning effects, and cockpit on desktop and phone.

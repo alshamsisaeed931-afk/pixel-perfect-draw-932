@@ -61,7 +61,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setSettings: (x) => setSt((s) => ({ ...s, settings: { ...s.settings, ...x } })),
     toggleFav: (id) => setSt((s) => ({ ...s, favorites: s.favorites.includes(id) ? s.favorites.filter((f) => f !== id) : [...s.favorites, id] })),
     saveConfig: (name) => setSt((s) => ({ ...s, configs: [...s.configs, { id: crypto.randomUUID(), name, engineId: s.engineId, tuning: s.tuning }] })),
-    loadConfig: (c) => { sim.setEngine(engineById(c.engineId), c.tuning); setSt((s) => ({ ...s, engineId: c.engineId, tuning: c.tuning })); },
+    loadConfig: (c) => { const tuning = { ...defaultTuning(engineById(c.engineId)), ...c.tuning }; sim.setEngine(engineById(c.engineId), tuning); setSt((s) => ({ ...s, engineId: c.engineId, tuning })); },
     deleteConfig: (id) => setSt((s) => ({ ...s, configs: s.configs.filter((c) => c.id !== id) })),
     setBest: (id, t) => setSt((s) => ({ ...s, best: { ...s.best, [id]: s.best[id] ? Math.min(s.best[id], t) : t } })),
     resetAll: () => { localStorage.removeItem(KEY); setSt(initial()); },

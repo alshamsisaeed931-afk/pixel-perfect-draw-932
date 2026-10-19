@@ -1,3 +1,5 @@
+import { intakeMultiplier, type ShiftColor } from "./dashboard";
+
 export type Induction = "na" | "turbo" | "twin" | "super";
 export type Engine = {
   id: string; name: string; layout: string; cat: string; cyl: number;
@@ -43,6 +45,8 @@ export type Tuning = {
   cam: "stock" | "street" | "race"; timing: number; fuel: number;
   spoolRate: number; popsLevel: number; launchRpm: number; antiLag: boolean;
   speedLimit: number; // km/h, 0 = off
+  shiftLight: boolean; shiftRpm: number; shiftColor: ShiftColor;
+  intake: "stock" | "sport" | "race"; flywheel: number; finalDrive: number; throttleResponse: number;
 };
 
 export const defaultTuning = (e: Engine): Tuning => ({
@@ -50,6 +54,8 @@ export const defaultTuning = (e: Engine): Tuning => ({
   pops: e.cat !== "Diesel", idleOffset: 0, limiter: e.redline, limiterType: "hard",
   cam: "stock", timing: 0.5, fuel: 0.5, spoolRate: 1, popsLevel: 0.5,
   launchRpm: Math.round(e.redline * 0.45 / 100) * 100, antiLag: false, speedLimit: 0,
+  shiftLight: true, shiftRpm: Math.round(e.redline * 0.9 / 100) * 100, shiftColor: "red",
+  intake: "stock", flywheel: 1, finalDrive: 3.7, throttleResponse: 1,
 });
 
 export const EXHAUST = {
@@ -86,7 +92,7 @@ export function torqueAt(e: Engine, t: Tuning, rpm: number, boost: number) {
   const boostMult = 1 + (boost / 14.7) * naBoosted - (e.induction !== "na" ? (e.boost / 14.7) * 0.85 : 0);
   const timingMult = 0.92 + t.timing * 0.16; // 0.92x retarded … 1.08x advanced
   const fuelMult = 1.02 - Math.abs(t.fuel - 0.55) * 0.18; // richest/leanest lose power
-  return base * Math.max(0.4, boostMult) * EXHAUST[t.exhaust].mult * (1 - t.muffler * 0.04) * timingMult * fuelMult;
+   return base * Math.max(0.4, boostMult) * EXHAUST[t.exhaust].mult * (1 - t.muffler * 0.04) * timingMult * fuelMult * intakeMultiplier(t.intake);
 }
 
 export const hpFrom = (tq: number, rpm: number) => (tq * rpm) / 7121;
