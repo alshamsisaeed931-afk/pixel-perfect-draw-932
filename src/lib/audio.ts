@@ -13,15 +13,26 @@ function shaperCurve(k: number) {
   return c;
 }
 
+/**
+ * Sound model: a real engine is a train of combustion pressure pulses (one per
+ * cylinder firing) ringing through fixed-size pipes. We synthesise one full
+ * engine cycle (two crank turns) of pulses as a periodic wave so the per-cylinder
+ * irregularity produces the lumpy "blub-blub", then shape it with fixed body
+ * resonances, a deep sub layer and slow random jitter for rumble.
+ */
 export class EngineAudio {
   ctx: AudioContext | null = null;
   private noise!: AudioBuffer;
-  private osc!: OscillatorNode; private osc2!: OscillatorNode; private pre!: GainNode; private shaper!: WaveShaperNode;
-  private lp!: BiquadFilterNode; private engGain!: GainNode;
-  private exNoise!: AudioBufferSourceNode; private exBp!: BiquadFilterNode; private exAm!: GainNode; private pulse!: OscillatorNode; private exGain!: GainNode;
-  private clat!: BiquadFilterNode; private clatGain!: GainNode;
+  private osc!: OscillatorNode; private pre!: GainNode; private shaper!: WaveShaperNode;
+  private lp!: BiquadFilterNode; private body!: BiquadFilterNode; private engGain!: GainNode;
+  private sub!: OscillatorNode; private subLp!: BiquadFilterNode; private subGain!: GainNode;
+  private jitter!: GainNode;
+  private exBp!: BiquadFilterNode; private exGain!: GainNode;
+  private clatGain!: GainNode;
   private whistle!: OscillatorNode; private whistleGain!: GainNode; private whoosh!: BiquadFilterNode; private whooshGain!: GainNode;
   private sc!: OscillatorNode; private scBp!: BiquadFilterNode; private scGain!: GainNode;
+  private nosGain!: GainNode;
+  private pulse!: OscillatorNode;
   private buses!: Record<"engine" | "turbo" | "exhaust" | "ambient", GainNode>;
   private master!: GainNode;
   private engine: Engine | null = null; private tuning: Tuning | null = null;
@@ -38,36 +49,58 @@ export class EngineAudio {
     const d = this.noise.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 
+    // Master: warm low shelf, tame the thin "mosquito" top end, then glue compressor.
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -10; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.15;
-    this.master = ctx.createGain(); this.master.connect(comp); comp.connect(ctx.destination);
+    comp.threshold.value = -12; comp.ratio.value = 5; comp.attack.value = 0.004; comp.release.value = 0.18;
+    const warm = ctx.createBiquadFilter(); warm.type = "lowshelf"; warm.frequency.value = 160; warm.gain.value = 7;
+    const tame = ctx.createBiquadFilter(); tame.type = "highshelf"; tame.frequency.value = 2600; tame.gain.value = -9;
+    const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 22; // remove DC/inaudible
+    this.master = ctx.createGain();
+    this.master.connect(hp); hp.connect(warm); warm.connect(tame); tame.connect(comp); comp.connect(ctx.destination);
     const bus = () => { const g = ctx.createGain(); g.connect(this.master); return g; };
     this.buses = { engine: bus(), turbo: bus(), exhaust: bus(), ambient: bus() };
 
-    // Engine core: harmonic periodic wave -> drive -> lowpass
-    this.osc = ctx.createOscillator(); this.osc2 = ctx.createOscillator();
-    this.pre = ctx.createGain(); this.shaper = ctx.createWaveShaper(); this.shaper.curve = shaperCurve(2.2); this.shaper.oversample = "2x";
-    this.lp = ctx.createBiquadFilter(); this.lp.type = "lowpass"; this.lp.Q.value = 2.5;
+    // Slow random jitter — cycle-to-cycle combustion variation = rumble
+    const jn = this.loopNoise();
+    const jlp = ctx.createBiquadFilter(); jlp.type = "lowpass"; jlp.frequency.value = 9;
+    this.jitter = ctx.createGain(); this.jitter.gain.value = 0;
+    jn.connect(jlp); jlp.connect(this.jitter);
+
+    // Core: combustion pulse train -> drive -> lowpass -> body resonance
+    this.osc = ctx.createOscillator();
+    this.pre = ctx.createGain(); this.shaper = ctx.createWaveShaper(); this.shaper.curve = shaperCurve(2.6); this.shaper.oversample = "2x";
+    this.lp = ctx.createBiquadFilter(); this.lp.type = "lowpass"; this.lp.Q.value = 0.9;
+    this.body = ctx.createBiquadFilter(); this.body.type = "peaking"; this.body.frequency.value = 110; this.body.Q.value = 0.8; this.body.gain.value = 8;
+    const pipe = ctx.createBiquadFilter(); pipe.type = "peaking"; pipe.frequency.value = 320; pipe.Q.value = 1.2; pipe.gain.value = 4;
     this.engGain = ctx.createGain(); this.engGain.gain.value = 0;
-    const o2g = ctx.createGain(); o2g.gain.value = 0.35;
-    this.osc.connect(this.pre); this.osc2.connect(o2g); o2g.connect(this.pre);
-    this.pre.connect(this.shaper); this.shaper.connect(this.lp); this.lp.connect(this.engGain); this.engGain.connect(this.buses.engine);
+    this.osc.connect(this.pre); this.pre.connect(this.shaper); this.shaper.connect(this.lp); this.lp.connect(this.body); this.body.connect(pipe);
+    pipe.connect(this.engGain); this.engGain.connect(this.buses.engine);
+    this.jitter.connect(this.engGain.gain);
 
-    // Exhaust pulses: noise amplitude-modulated at firing frequency
-    this.exNoise = this.loopNoise();
-    this.exBp = ctx.createBiquadFilter(); this.exBp.type = "bandpass"; this.exBp.Q.value = 0.9;
-    this.exAm = ctx.createGain(); this.exAm.gain.value = 0.5;
-    this.pulse = ctx.createOscillator(); this.pulse.type = "square";
-    const pg = ctx.createGain(); pg.gain.value = 0.5; this.pulse.connect(pg); pg.connect(this.exAm.gain);
+    // Sub rumble: half-firing-order + firing fundamental, saturated so phone speakers still hear its harmonics
+    this.sub = ctx.createOscillator();
+    const subDrive = ctx.createGain(); subDrive.gain.value = 2.2;
+    const subSh = ctx.createWaveShaper(); subSh.curve = shaperCurve(1.8);
+    this.subLp = ctx.createBiquadFilter(); this.subLp.type = "lowpass"; this.subLp.Q.value = 0.7;
+    this.subGain = ctx.createGain(); this.subGain.gain.value = 0;
+    this.sub.connect(subDrive); subDrive.connect(subSh); subSh.connect(this.subLp); this.subLp.connect(this.subGain); this.subGain.connect(this.buses.engine);
+    this.jitter.connect(this.subGain.gain);
+
+    // Exhaust roar: noise gated by the firing pulse
+    const exNoise = this.loopNoise();
+    this.exBp = ctx.createBiquadFilter(); this.exBp.type = "bandpass"; this.exBp.Q.value = 0.7;
+    const exAm = ctx.createGain(); exAm.gain.value = 0.45;
+    this.pulse = ctx.createOscillator(); this.pulse.type = "sawtooth";
+    const pg = ctx.createGain(); pg.gain.value = 0.5; this.pulse.connect(pg); pg.connect(exAm.gain);
     this.exGain = ctx.createGain(); this.exGain.gain.value = 0;
-    this.exNoise.connect(this.exBp); this.exBp.connect(this.exAm); this.exAm.connect(this.exGain); this.exGain.connect(this.buses.exhaust);
+    exNoise.connect(this.exBp); this.exBp.connect(exAm); exAm.connect(this.exGain); this.exGain.connect(this.buses.exhaust);
 
-    // Diesel clatter
+    // Diesel clatter / injector tick
     const cn = this.loopNoise();
-    this.clat = ctx.createBiquadFilter(); this.clat.type = "bandpass"; this.clat.frequency.value = 3200; this.clat.Q.value = 3;
+    const clat = ctx.createBiquadFilter(); clat.type = "bandpass"; clat.frequency.value = 2600; clat.Q.value = 3;
     const clatAm = ctx.createGain(); clatAm.gain.value = 0.3; pg.connect(clatAm.gain);
     this.clatGain = ctx.createGain(); this.clatGain.gain.value = 0;
-    cn.connect(this.clat); this.clat.connect(clatAm); clatAm.connect(this.clatGain); this.clatGain.connect(this.buses.engine);
+    cn.connect(clat); clat.connect(clatAm); clatAm.connect(this.clatGain); this.clatGain.connect(this.buses.engine);
 
     // Turbo
     this.whistle = ctx.createOscillator(); this.whistle.type = "sine";
@@ -84,13 +117,19 @@ export class EngineAudio {
     this.scGain = ctx.createGain(); this.scGain.gain.value = 0;
     this.sc.connect(this.scBp); this.scBp.connect(this.scGain); this.scGain.connect(this.buses.turbo);
 
+    // Nitrous hiss
+    const nn = this.loopNoise();
+    const nhp = ctx.createBiquadFilter(); nhp.type = "highpass"; nhp.frequency.value = 3500;
+    this.nosGain = ctx.createGain(); this.nosGain.gain.value = 0;
+    nn.connect(nhp); nhp.connect(this.nosGain); this.nosGain.connect(this.buses.turbo);
+
     // Ambient garage
     const an = this.loopNoise();
     const alp = ctx.createBiquadFilter(); alp.type = "lowpass"; alp.frequency.value = 180;
     const ag = ctx.createGain(); ag.gain.value = 0.25;
     an.connect(alp); alp.connect(ag); ag.connect(this.buses.ambient);
 
-    [this.osc, this.osc2, this.pulse, this.whistle, this.sc].forEach((o) => o.start());
+    [this.osc, this.sub, this.pulse, this.whistle, this.sc].forEach((o) => o.start());
     if (this.engine) this.buildWave();
     this.applyVolumes();
   }
@@ -104,27 +143,35 @@ export class EngineAudio {
   setTuning(t: Tuning) { this.tuning = t; }
   setQuality(q: "high" | "low") { this.quality = q; if (this.ctx && this.engine) this.buildWave(); }
 
+  /** One engine cycle (720° crank) of combustion pulses -> Fourier series -> PeriodicWave. */
   private buildWave() {
     const e = this.engine!, ctx = this.ctx!;
-    const N = this.quality === "high" ? 128 : 56;
+    const N = this.quality === "high" ? 96 : 48, M = 2048;
+    const c = Math.max(1, e.cyl), x = new Float32Array(M);
+    const width = (0.16 + e.bass * 0.12 - e.rasp * 0.06) / c; // fatter pulses = deeper
+    for (let i = 0; i < c; i++) {
+      const pos = i / c + e.uneven * 0.07 * (rand(i * 3.3 + c) - 0.5) + (e.uneven > 0.6 && i % 2 ? e.uneven * 0.03 : 0);
+      const amp = 1 - e.uneven * 0.45 * rand(i + c * 5);
+      for (let m = 0; m < M; m++) {
+        let t = m / M - pos; t -= Math.round(t);
+        const g = Math.exp(-((t / width) ** 2));
+        const reb = Math.exp(-(((t - width * 1.6) / (width * 1.3)) ** 2)); // pipe rebound
+        x[m]! += amp * (g - 0.55 * reb);
+        if (e.rasp > 0.3) x[m]! += amp * e.rasp * 0.25 * Math.exp(-((t / (width * 0.25)) ** 2));
+      }
+    }
     const real = new Float32Array(N + 1), imag = new Float32Array(N + 1);
-    const c = e.cyl;
     for (let n = 1; n <= N; n++) {
-      let a = 0;
-      if (n % c === 0) { const k = n / c; a += 1 / Math.pow(k, 1.25 - e.rasp * 0.75); }
-      const half = c / 2;
-      if (half >= 1 && Number.isInteger(half) && n % half === 0 && n % c !== 0) a += e.uneven * 0.55 / Math.sqrt(n / half);
-      if (n < c * 3) a += e.uneven * 0.35 * rand(n + c * 7) / Math.sqrt(n);
-      if (n < c) a += e.bass * 0.25 / n;
-      a += e.rasp * 0.06 * rand(n * 3.1 + c) * (n > c * 2 ? 1 : 0);
-      const ph = rand(n * 1.7 + c) * Math.PI * 2;
-      real[n] = a * Math.cos(ph); imag[n] = a * Math.sin(ph);
+      let re = 0, im = 0; const w = (2 * Math.PI * n) / M;
+      for (let m = 0; m < M; m++) { re += x[m]! * Math.cos(w * m); im += x[m]! * Math.sin(w * m); }
+      const roll = 1 / (1 + Math.pow(n / (c * (3 + e.rasp * 4)), 2)); // soften high harmonics
+      real[n] = (re / M) * roll; imag[n] = (im / M) * roll;
     }
     this.osc.setPeriodicWave(ctx.createPeriodicWave(real, imag));
-    // osc2: half-order sub rumble
-    const r2 = new Float32Array(9), i2 = new Float32Array(9);
-    for (let n = 1; n <= 8; n++) i2[n] = (n % 2 ? 1 : 0.4) / n;
-    this.osc2.setPeriodicWave(ctx.createPeriodicWave(r2, i2));
+    // Sub: firing fundamental + half-order lope
+    const r2 = new Float32Array(5), i2 = new Float32Array(5);
+    i2[1] = 0.5 + e.uneven * 0.6; i2[2] = 1; i2[3] = 0.15; i2[4] = 0.25;
+    this.sub.setPeriodicWave(ctx.createPeriodicWave(r2, i2));
   }
 
   setVolumes(v: Volumes) { this.vols = v; this.applyVolumes(); }
@@ -138,36 +185,44 @@ export class EngineAudio {
     this.buses.ambient.gain.setTargetAtTime(v.ambient, t, 0.05);
   }
 
-  update(p: { rpm: number; throttle: number; load: number; boost: number; on: boolean; cut: boolean }) {
+  update(p: { rpm: number; throttle: number; load: number; boost: number; on: boolean; cut: boolean; nos?: boolean }) {
     if (!this.ctx || !this.engine || !this.tuning) return;
-    const e = this.engine, tu = this.tuning, ex = EXHAUST[tu.exhaust];
+    const e = this.engine, tu = this.tuning, ex = EXHAUST[tu.exhaust] ?? EXHAUST.sport;
     const t = this.ctx.currentTime, k = 0.012;
     const rpm = Math.max(p.rpm, 1), r = Math.min(1.2, rpm / e.redline);
     const f0 = rpm / 120, firing = f0 * e.cyl;
     const alive = p.rpm > 60 ? 1 : p.rpm / 60;
     const th = p.cut ? 0 : p.throttle;
     const loadTh = Math.min(1, th * (0.6 + 0.4 * p.load));
+    const muff = tu.muffler;
     this.osc.frequency.setTargetAtTime(f0, t, k);
-    this.osc2.frequency.setTargetAtTime(f0 * (e.cyl >= 2 ? e.cyl / 2 : 1), t, k);
+    this.sub.frequency.setTargetAtTime(firing / 2, t, k);
     this.pulse.frequency.setTargetAtTime(firing, t, k);
-    const cutoff = (250 + rpm * (0.35 + 0.55 * loadTh) * (1 + e.rasp * 0.6)) * ex.tone * (1 - tu.muffler * 0.45);
-    this.lp.frequency.setTargetAtTime(Math.min(16000, cutoff), t, k);
-    this.pre.gain.setTargetAtTime((0.7 + loadTh * 2.2 * ex.drive) * (p.cut ? 0.4 : 1), t, k);
-    const eg = (0.16 + 0.32 * loadTh + 0.22 * r) * alive * (p.cut ? 0.35 : 1) * (1 - tu.muffler * 0.35);
+    const cutoff = (180 + rpm * (0.16 + 0.34 * loadTh) * (1 + e.rasp * 0.5)) * ex.tone * (1 - muff * 0.45);
+    this.lp.frequency.setTargetAtTime(Math.min(6500, cutoff), t, k);
+    this.body.gain.setTargetAtTime(6 + e.bass * 6 * ex.rumble, t, 0.05);
+    this.pre.gain.setTargetAtTime((1 + loadTh * 2.4 * ex.drive) * (p.cut ? 0.4 : 1), t, k);
+    const eg = (0.2 + 0.34 * loadTh + 0.18 * r) * alive * (p.cut ? 0.35 : 1) * (1 - muff * 0.35);
     this.engGain.gain.setTargetAtTime(eg, t, k);
-    this.exBp.frequency.setTargetAtTime(Math.min(9000, (180 + firing * 1.4) * ex.tone), t, k);
-    const xg = (0.05 + 0.4 * loadTh * (0.3 + r)) * ex.loud * alive * (1 - tu.muffler * 0.6);
+    // deep rumble strongest at idle / low rpm and on load
+    const sg = (0.22 + 0.3 * e.bass + 0.25 * loadTh) * (1.15 - 0.6 * Math.min(1, r)) * alive * ex.rumble * (1 - muff * 0.25);
+    this.subGain.gain.setTargetAtTime(sg * (p.cut ? 0.5 : 1), t, k);
+    this.subLp.frequency.setTargetAtTime(Math.min(900, 120 + firing * 1.2), t, k);
+    this.jitter.gain.setTargetAtTime(alive * (0.06 + e.uneven * 0.22) * (1.1 - Math.min(1, r)) * ex.rumble, t, 0.1);
+    this.exBp.frequency.setTargetAtTime(Math.min(5000, (110 + firing * 1.1) * ex.tone), t, k);
+    const xg = (0.05 + 0.38 * loadTh * (0.3 + r)) * ex.loud * alive * (1 - muff * 0.6);
     this.exGain.gain.setTargetAtTime(xg, t, k);
     this.clatGain.gain.setTargetAtTime(e.clatter * 0.12 * alive * (0.6 + 0.4 * (1 - r)), t, 0.05);
     const br = tu.induction === "na" || tu.induction === "super" ? 0 : Math.min(1.3, p.boost / 18);
     this.whistle.frequency.setTargetAtTime(1600 + br * 5200 + r * 800, t, 0.05);
-    this.whistleGain.gain.setTargetAtTime(br * br * 0.07, t, 0.05);
+    this.whistleGain.gain.setTargetAtTime(br * br * 0.06, t, 0.05);
     this.whoosh.frequency.setTargetAtTime(1800 + br * 3000, t, 0.05);
     this.whooshGain.gain.setTargetAtTime(br * 0.12, t, 0.05);
     const sc = tu.induction === "super" ? 1 : 0;
     this.sc.frequency.setTargetAtTime(rpm * 0.45, t, k);
     this.scBp.frequency.setTargetAtTime(rpm * 0.9, t, k);
     this.scGain.gain.setTargetAtTime(sc * alive * (0.04 + 0.1 * r) * (0.4 + 0.6 * th) * (0.5 + tu.boost / 20), t, k);
+    this.nosGain.gain.setTargetAtTime(p.nos ? 0.08 : 0, t, 0.04);
   }
 
   private burst(dur: number, setup: (src: AudioBufferSourceNode, g: GainNode, t: number) => AudioNode, dest: AudioNode) {
@@ -181,13 +236,18 @@ export class EngineAudio {
 
   pop(intensity = 1) {
     if (!this.ctx) return;
-    const ex = this.tuning ? EXHAUST[this.tuning.exhaust].loud : 1;
+    const ex = this.tuning ? (EXHAUST[this.tuning.exhaust] ?? EXHAUST.sport).loud : 1;
     this.burst(0.15, (src, g, t) => {
-      const f = this.ctx!.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 600 + Math.random() * 1500; f.Q.value = 1;
+      const f = this.ctx!.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 450 + Math.random() * 1100; f.Q.value = 1;
       src.connect(f);
       g.gain.setValueAtTime(0.9 * intensity * ex, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04 + Math.random() * 0.08);
       return f;
     }, this.buses.exhaust);
+    // low "boom" body of the backfire
+    const ctx = this.ctx, t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(90 + Math.random() * 40, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.5 * intensity * ex, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    o.connect(g); g.connect(this.buses.exhaust); o.start(t); o.stop(t + 0.16);
   }
 
   blowoff(intensity: number) {

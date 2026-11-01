@@ -1,3 +1,15 @@
 - [x] Add compact live speedometer and customizable RPM shift light.
 - [x] Add intake, flywheel, final-drive, and throttle-response tuning with real simulation effects.
 - [x] Verify persistence, tuning effects, and cockpit on desktop and phone.
+- [ ] 10 more engines incl. Nissan TB48, Toyota V8, Mitsubishi GDI
+- [ ] More tune options + more exhaust types
+- [ ] Deep rumble/roar engine sound (no mosquito whine)
+- [ ] Owner credit "Saeed Khalfan Salem Alshamsi" at bottom of Settings
+- [ ] Optional 6–10 gear gearbox in Settings
+- [ ] Nitrous boost
+- [ ] Drag race vs multiple NPCs
+- [ ] Online drag racing: usernames, friends, race each other (Cloud)
+- [ ] Idea box (Cloud)
+- [ ] Loading screen
+- [ ] Google Search Console setup for published site
+- [ ] Marketing: get more visitors plan
