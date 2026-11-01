@@ -34,19 +34,45 @@ export const ENGINES: Engine[] = [
   E({ id: "i5", name: "Turbo I5 2.5", layout: "I5", cat: "Hot Hatch", cyl: 5, idle: 800, redline: 7000, peakT: 480, peakTRpm: 3000, induction: "turbo", boost: 20, spool: 2400, inertia: 0.15, mass: 1500, uneven: 0.35, rasp: 0.4, bass: 0.4, clatter: 0, desc: "Legendary warbling five." }),
   E({ id: "boxer4", name: "Turbo Boxer-4 2.5", layout: "F4", cat: "Tuner", cyl: 4, idle: 800, redline: 7000, peakT: 410, peakTRpm: 4000, induction: "turbo", boost: 16, spool: 2800, inertia: 0.14, mass: 1450, uneven: 0.8, rasp: 0.3, bass: 0.5, clatter: 0, desc: "Unequal-length boxer rumble." }),
   E({ id: "single", name: "Dirt Bike Single 450", layout: "1", cat: "Moto", cyl: 1, idle: 1600, redline: 11500, peakT: 50, peakTRpm: 8500, induction: "na", boost: 0, spool: 3000, inertia: 0.015, mass: 210, uneven: 0.2, rasp: 0.6, bass: 0.3, clatter: 0.2, desc: "Thumping, snappy single." }),
+  E({ id: "tb48", name: "Nissan TB48DE I6 4.8", layout: "I6", cat: "Off-Road", cyl: 6, idle: 650, redline: 5200, peakT: 451, peakTRpm: 3600, induction: "na", boost: 0, spool: 3000, inertia: 0.42, mass: 2700, uneven: 0.08, rasp: 0.2, bass: 0.7, clatter: 0.05, desc: "Patrol legend — deep, torquey straight-six growl." }),
+  E({ id: "toyv8", name: "Toyota 3UR-FE V8 5.7", layout: "V8", cat: "Off-Road", cyl: 8, idle: 650, redline: 5800, peakT: 544, peakTRpm: 3600, induction: "na", boost: 0, spool: 3000, inertia: 0.36, mass: 2600, uneven: 0.35, rasp: 0.22, bass: 0.75, clatter: 0, desc: "Land Cruiser / Tundra V8 — smooth, heavy rumble." }),
+  E({ id: "gdi", name: "Mitsubishi 6G74 GDI V6 3.5", layout: "V6", cat: "Off-Road", cyl: 6, idle: 700, redline: 6200, peakT: 348, peakTRpm: 4000, induction: "na", boost: 0, spool: 3000, inertia: 0.26, mass: 2100, uneven: 0.3, rasp: 0.35, bass: 0.5, clatter: 0.18, desc: "Pajero direct-injection V6 with injector tick." }),
+  E({ id: "vk56", name: "Nissan VK56 V8 5.6", layout: "V8", cat: "Off-Road", cyl: 8, idle: 650, redline: 6400, peakT: 560, peakTRpm: 4000, induction: "na", boost: 0, spool: 3000, inertia: 0.36, mass: 2700, uneven: 0.55, rasp: 0.25, bass: 0.8, clatter: 0, desc: "Y62 Patrol V8 — desert-dune thunder." }),
+  E({ id: "rb26", name: "Nissan RB26DETT I6 2.6", layout: "I6T", cat: "JDM", cyl: 6, idle: 950, redline: 8000, peakT: 392, peakTRpm: 4400, induction: "twin", boost: 14, spool: 3200, inertia: 0.16, mass: 1560, uneven: 0.05, rasp: 0.55, bass: 0.35, clatter: 0, desc: "Godzilla's twin-turbo straight six." }),
+  E({ id: "2jz", name: "Toyota 2JZ-GTE I6 3.0", layout: "I6T", cat: "JDM", cyl: 6, idle: 750, redline: 7200, peakT: 451, peakTRpm: 4000, induction: "twin", boost: 15, spool: 3000, inertia: 0.2, mass: 1570, uneven: 0.05, rasp: 0.45, bass: 0.45, clatter: 0, desc: "The 1000 hp-capable Supra legend." }),
+  E({ id: "vr38", name: "Nissan VR38DETT V6 3.8", layout: "V6T", cat: "JDM", cyl: 6, idle: 850, redline: 7100, peakT: 637, peakTRpm: 3600, induction: "twin", boost: 20, spool: 2400, inertia: 0.2, mass: 1750, uneven: 0.3, rasp: 0.4, bass: 0.45, clatter: 0, desc: "GT-R hand-built twin-turbo V6." }),
+  E({ id: "1vd", name: "Toyota 1VD-FTV V8 Diesel 4.5", layout: "V8D", cat: "Diesel", cyl: 8, idle: 650, redline: 4200, peakT: 650, peakTRpm: 1800, induction: "twin", boost: 20, spool: 1400, inertia: 0.5, mass: 2700, uneven: 0.45, rasp: 0.2, bass: 0.85, clatter: 0.7, desc: "Land Cruiser 70/200 diesel V8 grunt." }),
+  E({ id: "4g63", name: "Mitsubishi 4G63T Evo 2.0", layout: "I4T", cat: "JDM", cyl: 4, idle: 900, redline: 7500, peakT: 400, peakTRpm: 3500, induction: "turbo", boost: 22, spool: 3000, inertia: 0.13, mass: 1450, uneven: 0.1, rasp: 0.5, bass: 0.35, clatter: 0, desc: "Lancer Evo rally turbo four." }),
+  E({ id: "m177", name: "AMG 4.0 Biturbo V8", layout: "V8T", cat: "Supercar", cyl: 8, idle: 750, redline: 7200, peakT: 900, peakTRpm: 2500, induction: "twin", boost: 20, spool: 2000, inertia: 0.25, mass: 1900, uneven: 0.7, rasp: 0.35, bass: 0.8, clatter: 0, desc: "Hot-vee biturbo V8 with savage crackle." }),
 ];
 
 export const engineById = (id: string): Engine => ENGINES.find((e) => e.id === id) ?? ENGINES[0]!;
 
+export const EXHAUST = {
+  stock: { l: "Stock", tone: 0.7, loud: 0.6, drive: 0.6, mult: 1, rumble: 0.8 },
+  sport: { l: "Sport", tone: 1, loud: 0.9, drive: 1, mult: 1.03, rumble: 1 },
+  valved: { l: "Valved", tone: 1.1, loud: 1.05, drive: 1.15, mult: 1.04, rumble: 1.2 },
+  quad: { l: "Quad tip", tone: 1.05, loud: 1.1, drive: 1.2, mult: 1.05, rumble: 1.35 },
+  decat: { l: "Decat", tone: 1.3, loud: 1.2, drive: 1.4, mult: 1.05, rumble: 1.15 },
+  sidepipe: { l: "Side pipes", tone: 1.2, loud: 1.4, drive: 1.6, mult: 1.05, rumble: 1.5 },
+  straight: { l: "Straight", tone: 1.35, loud: 1.25, drive: 1.5, mult: 1.06, rumble: 1.25 },
+  titanium: { l: "Titanium", tone: 1.5, loud: 1.15, drive: 1.3, mult: 1.07, rumble: 0.9 },
+  rally: { l: "Rally", tone: 1.4, loud: 1.3, drive: 1.5, mult: 1.06, rumble: 1 },
+  race: { l: "Race", tone: 1.6, loud: 1.45, drive: 1.9, mult: 1.09, rumble: 1.1 },
+};
+export type ExhaustType = keyof typeof EXHAUST;
+
 export type Tuning = {
   induction: Induction; boost: number; wastegate: "bov" | "flutter" | "off";
-  exhaust: "stock" | "sport" | "straight" | "race"; muffler: number; pops: boolean;
+  exhaust: ExhaustType; muffler: number; pops: boolean;
   idleOffset: number; limiter: number; limiterType: "hard" | "soft";
   cam: "stock" | "street" | "race"; timing: number; fuel: number;
   spoolRate: number; popsLevel: number; launchRpm: number; antiLag: boolean;
   speedLimit: number; // km/h, 0 = off
   shiftLight: boolean; shiftRpm: number; shiftColor: ShiftColor;
   intake: "stock" | "sport" | "race"; flywheel: number; finalDrive: number; throttleResponse: number;
+  fuelType: FuelType; intercooler: Intercooler; ecuMap: EcuMap; weightCut: number; // kg removed
+  nitrous: boolean; nitrousShot: number; // hp
 };
 
 export const defaultTuning = (e: Engine): Tuning => ({
@@ -56,14 +82,8 @@ export const defaultTuning = (e: Engine): Tuning => ({
   launchRpm: Math.round(e.redline * 0.45 / 100) * 100, antiLag: false, speedLimit: 0,
   shiftLight: true, shiftRpm: Math.round(e.redline * 0.9 / 100) * 100, shiftColor: "red",
   intake: "stock", flywheel: 1, finalDrive: 3.7, throttleResponse: 1,
+  fuelType: "95", intercooler: "street", ecuMap: "stock", weightCut: 0, nitrous: false, nitrousShot: 100,
 });
-
-export const EXHAUST = {
-  stock: { tone: 0.7, loud: 0.6, drive: 0.6, mult: 1 },
-  sport: { tone: 1, loud: 0.9, drive: 1, mult: 1.03 },
-  straight: { tone: 1.35, loud: 1.25, drive: 1.5, mult: 1.06 },
-  race: { tone: 1.6, loud: 1.45, drive: 1.9, mult: 1.09 },
-};
 
 export function steadyBoost(e: Engine, t: Tuning, rpm: number, th = 1) {
   if (t.induction === "na") return 0;
@@ -92,7 +112,9 @@ export function torqueAt(e: Engine, t: Tuning, rpm: number, boost: number) {
   const boostMult = 1 + (boost / 14.7) * naBoosted - (e.induction !== "na" ? (e.boost / 14.7) * 0.85 : 0);
   const timingMult = 0.92 + t.timing * 0.16; // 0.92x retarded … 1.08x advanced
   const fuelMult = 1.02 - Math.abs(t.fuel - 0.55) * 0.18; // richest/leanest lose power
-   return base * Math.max(0.4, boostMult) * EXHAUST[t.exhaust].mult * (1 - t.muffler * 0.04) * timingMult * fuelMult * intakeMultiplier(t.intake);
+  const ex = EXHAUST[t.exhaust] ?? EXHAUST.sport;
+  return base * Math.max(0.4, boostMult) * ex.mult * (1 - t.muffler * 0.04) * timingMult * fuelMult * intakeMultiplier(t.intake)
+    * fuelMultiplier(t.fuelType ?? "95") * intercoolerMultiplier(t.intercooler ?? "street", boost) * ecuTorque(t.ecuMap ?? "stock");
 }
 
 export const hpFrom = (tq: number, rpm: number) => (tq * rpm) / 7121;
