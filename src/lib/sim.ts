@@ -173,7 +173,7 @@ class Sim {
     s.nosOn = !!tu.nitrous && (this.nitrousIn || (s.dyno && this.nitrousIn)) && s.on && th > 0.5 && s.rpm > Math.max(2000, e.idle * 1.8) && s.nos > 0 && !s.cut;
     if (s.nosOn) s.nos = Math.max(0, s.nos - dt * (tu.nitrousShot / 100) / 14);
     const nosTq = s.nosOn ? nitrousTorque(tu.nitrousShot, s.rpm, e.peakTRpm) : 0;
-    const cap = e.peakT * 2.2 * (1 + s.boost / 14.7);
+    const cap = e.peakT * 2.2 * (1 + s.boost / 14.7) + nosTq * 1.5;
     const N = 8, h = dt / N;
     let Te = 0, Tc = 0;
     for (let i = 0; i < N; i++) {
