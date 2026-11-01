@@ -1,4 +1,4 @@
-import { intakeMultiplier, type ShiftColor } from "./dashboard";
+import { ecuTorque, fuelMultiplier, intakeMultiplier, intercoolerMultiplier, type EcuMap, type FuelType, type Intercooler, type ShiftColor } from "./dashboard";
 
 export type Induction = "na" | "turbo" | "twin" | "super";
 export type Engine = {
