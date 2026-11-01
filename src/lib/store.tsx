@@ -5,7 +5,7 @@ import { sim } from "./sim";
 export type Settings = {
   master: number; engine: number; turbo: number; exhaust: number; ambient: number;
   quality: "high" | "low"; graphics: "high" | "low"; vibration: boolean; units: "metric" | "imperial";
-  revMatch: boolean; autoClutch: boolean;
+  revMatch: boolean; autoClutch: boolean; gears: number;
 };
 export type SavedConfig = { id: string; name: string; engineId: string; tuning: Tuning };
 type State = {
@@ -15,7 +15,7 @@ type State = {
 
 export const DEFAULT_SETTINGS: Settings = {
   master: 0.8, engine: 1, turbo: 0.8, exhaust: 0.9, ambient: 0.25, quality: "high", graphics: "high",
-  vibration: true, units: "metric", revMatch: true, autoClutch: false,
+  vibration: true, units: "metric", revMatch: true, autoClutch: false, gears: 6,
 };
 const initial = (): State => ({ engineId: "v8", tuning: defaultTuning(engineById("v8")), settings: DEFAULT_SETTINGS, favorites: [], configs: [], best: {} });
 const KEY = "engine-sim-ultra-v1";
@@ -51,6 +51,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const s = st.settings;
     sim.setVolumes({ master: s.master, engine: s.engine, turbo: s.turbo, exhaust: s.exhaust, ambient: s.ambient });
     sim.audio.setQuality(s.quality);
+    sim.setGears(s.gears);
     sim.opts = { revMatch: s.revMatch, autoClutch: s.autoClutch, vibration: s.vibration };
   }, [st.settings]);
 
