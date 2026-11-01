@@ -14,13 +14,128 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      friendships: {
+        Row: {
+          addressee: string
+          created_at: string
+          id: string
+          requester: string
+          status: string
+        }
+        Insert: {
+          addressee: string
+          created_at?: string
+          id?: string
+          requester: string
+          status?: string
+        }
+        Update: {
+          addressee?: string
+          created_at?: string
+          id?: string
+          requester?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      ideas: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          name?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      races: {
+        Row: {
+          created_at: string
+          guest: string
+          guest_engine: string | null
+          guest_et: number | null
+          host: string
+          host_engine: string
+          host_et: number | null
+          id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          guest: string
+          guest_engine?: string | null
+          guest_et?: number | null
+          host: string
+          host_engine: string
+          host_et?: number | null
+          id?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          guest?: string
+          guest_engine?: string | null
+          guest_et?: number | null
+          host?: string
+          host_engine?: string
+          host_et?: number | null
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_friend: { Args: { p_id: string }; Returns: undefined }
+      cancel_race: { Args: { p_id: string }; Returns: undefined }
+      challenge_friend: {
+        Args: { p_engine: string; p_friend: string }
+        Returns: string
+      }
+      respond_race: {
+        Args: { p_accept: boolean; p_engine: string; p_id: string }
+        Returns: undefined
+      }
+      send_friend_request: { Args: { p_username: string }; Returns: string }
+      submit_race_time: {
+        Args: { p_et: number; p_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
