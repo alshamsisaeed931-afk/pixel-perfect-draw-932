@@ -1,14 +1,14 @@
 import { EngineAudio, type Volumes } from "./audio";
-import { effectiveInertia, finalDriveRatio, throttleStep } from "./dashboard";
+import { ecuThrottle, effectiveInertia, finalDriveRatio, gearRatios, nitrousTorque, throttleStep } from "./dashboard";
 import { CAM, ENGINES, defaultTuning, hpFrom, steadyBoost, torqueAt, type Engine, type Tuning } from "./engines";
 
-export const GEAR_RATIOS: Record<number, number> = { [-1]: -3.3, 0: 0, 1: 3.6, 2: 2.2, 3: 1.55, 4: 1.2, 5: 1.0, 6: 0.83 };
+export const GEAR_RATIOS: Record<number, number> = gearRatios(6);
 const WHEEL_R = 0.33;
 
 export type Snapshot = {
   on: boolean; starting: boolean; rpm: number; throttle: number; gear: number; clutch: number;
   speed: number; dist: number; temp: number; boost: number; hp: number; torque: number; cut: boolean; spdCut: boolean;
-  message: string; msgId: number; dyno: boolean; dynoId: number; time: number;
+  message: string; msgId: number; dyno: boolean; dynoId: number; time: number; nos: number; nosOn: boolean;
 };
 export type DynoPoint = { rpm: number; hp: number; tq: number; boost: number };
 
@@ -19,10 +19,11 @@ class Sim {
   engine: Engine = ENGINES[0]!;
   tuning: Tuning = defaultTuning(ENGINES[0]!);
   opts: Opts = { revMatch: true, autoClutch: false, vibration: true };
-  throttleIn = 0; clutchIn = 0;
+  throttleIn = 0; clutchIn = 0; nitrousIn = false;
+  gears = 6; ratios: Record<number, number> = gearRatios(6);
   history: { t: number; rpm: number; boost: number }[] = [];
   dynoResult: DynoPoint[] = [];
-  private s: Snapshot = { on: false, starting: false, rpm: 0, throttle: 0, gear: 0, clutch: 1, speed: 0, dist: 0, temp: 45, boost: 0, hp: 0, torque: 0, cut: false, spdCut: false, message: "", msgId: 0, dyno: false, dynoId: 0, time: 0 };
+  private s: Snapshot = { on: false, starting: false, rpm: 0, throttle: 0, gear: 0, clutch: 1, speed: 0, dist: 0, temp: 45, boost: 0, hp: 0, torque: 0, cut: false, spdCut: false, message: "", msgId: 0, dyno: false, dynoId: 0, time: 0, nos: 1, nosOn: false };
   private snap: Snapshot = { ...this.s };
   private listeners = new Set<() => void>();
   private raf = 0; private last = 0;
@@ -46,6 +47,8 @@ class Sim {
   }
   setTuning(t: Tuning) { this.tuning = t; this.audio.setTuning(t); }
   setVolumes(v: Volumes) { this.audio.setVolumes(v); }
+  setGears(n: number) { this.gears = n; this.ratios = gearRatios(n); if (this.s.gear > n) this.s.gear = n; }
+  refillNitrous() { this.s.nos = 1; }
 
   private msg(m: string) { this.s.message = m; this.s.msgId++; }
   private buzz(ms: number) { if (this.opts.vibration && typeof navigator !== "undefined") navigator.vibrate?.(ms); }
@@ -62,7 +65,7 @@ class Sim {
   shift(g: number) {
     this.ensureAudio();
     const s = this.s;
-    if (g === s.gear || s.dyno) return;
+    if (g === s.gear || s.dyno || g > this.gears) return;
     if (g === -1 && s.speed > 1.5) { this.audio.grind(); this.msg("STOP TO ENGAGE REVERSE"); this.buzz(80); return; }
     if (!this.opts.autoClutch && s.on && g !== 0 && s.clutch > 0.4) {
       this.audio.grind(); this.msg("GRIND! USE THE CLUTCH"); this.buzz(80); return;
@@ -70,7 +73,7 @@ class Sim {
     if (this.opts.autoClutch) { this.dipT = 0.28; s.clutch = 0; }
     s.gear = g; this.audio.click(); this.buzz(10);
     if (this.opts.revMatch && g > 0 && s.on) {
-      this.blipTarget = Math.abs(s.speed) / WHEEL_R * (GEAR_RATIOS[g] ?? 0) * finalDriveRatio(this.tuning.finalDrive) * 9.549; this.blipT = 0.35;
+      this.blipTarget = Math.abs(s.speed) / WHEEL_R * (this.ratios[g] ?? 0) * finalDriveRatio(this.tuning.finalDrive) * 9.549; this.blipT = 0.35;
     }
   }
 
@@ -87,7 +90,7 @@ class Sim {
     if (!s.on) { this.msg("START THE ENGINE FIRST"); return; }
     s.dyno = true; s.gear = 4; s.clutch = 1; this.dipT = 0;
     const startRpm = Math.max(e.idle * 1.5, e.redline * 0.25);
-    s.speed = startRpm / ((GEAR_RATIOS[4] ?? 1.2) * finalDriveRatio(this.tuning.finalDrive) * 9.549) * WHEEL_R; s.rpm = startRpm;
+    s.speed = startRpm / ((this.ratios[4] ?? 1.2) * finalDriveRatio(this.tuning.finalDrive) * 9.549) * WHEEL_R; s.rpm = startRpm;
     this.dynoResult = []; this.lastDynoRpm = 0;
   }
 
@@ -114,7 +117,7 @@ class Sim {
     const cT = this.dipT > 0 ? 0 : 1 - this.clutchIn;
     s.clutch += (cT - s.clutch) * Math.min(1, dt * (cT > s.clutch ? 6 : 25));
 
-    this.pedalThrottle = throttleStep(this.pedalThrottle, this.throttleIn, tu.throttleResponse, dt);
+    this.pedalThrottle = throttleStep(this.pedalThrottle, this.throttleIn, tu.throttleResponse * ecuThrottle(tu.ecuMap ?? "stock"), dt);
     let th = this.pedalThrottle;
     if (this.script) {
       const rel = s.time - this.script.start;
@@ -163,15 +166,20 @@ class Sim {
     if (tu.induction === "super" || tu.induction === "na") s.boost = target;
     else s.boost += (target - s.boost) * Math.min(1, dt / ((tu.induction === "twin" ? 0.3 : 0.55) / tu.spoolRate) * (target < s.boost ? 2.5 : 1));
 
-    const I = effectiveInertia(e.inertia, tu.flywheel), G = (GEAR_RATIOS[s.gear] ?? 0) * finalDriveRatio(tu.finalDrive);
-    const mass = s.dyno ? e.mass * 0.45 : e.mass;
+    const I = effectiveInertia(e.inertia, tu.flywheel), G = (this.ratios[s.gear] ?? 0) * finalDriveRatio(tu.finalDrive);
+    const baseMass = Math.max(e.mass * 0.5, e.mass - (tu.weightCut ?? 0));
+    const mass = s.dyno ? baseMass * 0.45 : baseMass;
+    // nitrous: hold the button, wide-ish throttle, above 2000 rpm, bottle not empty
+    s.nosOn = !!tu.nitrous && (this.nitrousIn || (s.dyno && this.nitrousIn)) && s.on && th > 0.5 && s.rpm > Math.max(2000, e.idle * 1.8) && s.nos > 0 && !s.cut;
+    if (s.nosOn) s.nos = Math.max(0, s.nos - dt * (tu.nitrousShot / 100) / 14);
+    const nosTq = s.nosOn ? nitrousTorque(tu.nitrousShot, s.rpm, e.peakTRpm) : 0;
     const cap = e.peakT * 2.2 * (1 + s.boost / 14.7);
     const N = 8, h = dt / N;
     let Te = 0, Tc = 0;
     for (let i = 0; i < N; i++) {
       const full = torqueAt(e, tu, s.rpm, s.boost);
       const fric = s.rpm < 5 ? 0 : e.peakT * (0.04 + 0.22 * s.rpm / e.redline);
-      Te = (s.on ? full * th : 0) - fric;
+      Te = (s.on ? full * th + nosTq : 0) - fric;
       const rpmV = G ? (s.speed / WHEEL_R) * G * 9.549 : 0;
       Tc = G ? s.clutch * Math.max(-cap, Math.min(cap, (s.rpm - rpmV) * (e.peakT / 160))) : 0;
       if (!s.on && s.rpm < 5 && G && s.clutch > 0.5) Tc = 0;
@@ -194,7 +202,7 @@ class Sim {
     if (s.on && s.rpm < idle * 0.35) { s.on = false; s.dyno = false; this.msg("STALLED!"); this.buzz(150); }
     s.dist += Math.abs(s.speed) * dt;
     s.throttle = th;
-    s.torque = Math.max(0, torqueAt(e, tu, s.rpm, s.boost) * th);
+    s.torque = Math.max(0, torqueAt(e, tu, s.rpm, s.boost) * th + nosTq);
     s.hp = hpFrom(s.torque, s.rpm);
     const tt = 82 + 22 * (s.rpm / e.redline) * (0.5 + th * 0.5) + (s.on ? 0 : -40);
     s.temp += (tt - s.temp) * dt * (s.on ? 0.05 : 0.01);
@@ -214,7 +222,7 @@ class Sim {
     if (this.histT > 1 / 30) { this.histT = 0; this.history.push({ t: s.time, rpm: s.rpm, boost: s.boost }); if (this.history.length > 180) this.history.shift(); }
 
     const load = G && s.clutch > 0.5 ? 1 : 0.3;
-    this.audio.update({ rpm: s.rpm, throttle: th, load, boost: s.boost, on: s.on || s.starting, cut: s.cut });
+    this.audio.update({ rpm: s.rpm, throttle: th, load, boost: s.boost, on: s.on || s.starting, cut: s.cut, nos: s.nosOn });
   }
 }
 
