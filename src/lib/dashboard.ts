@@ -36,3 +36,20 @@ export function gearRatios(n: number): Record<number, number> {
   for (let i = 1; i <= g; i++) out[i] = +(first * Math.pow(top / first, (i - 1) / (g - 1))).toFixed(3);
   return out;
 }
+
+export const QUARTER_MILE = 402.3;
+/** Quarter-mile ET estimate (Huntington formula) from peak hp and kg mass, incl. a 180 lb driver. */
+export const estimateET = (hp: number, massKg: number) => 5.825 * Math.cbrt((massKg * 2.2046 + 180) / Math.max(1, hp));
+/** Distance covered at time t by a rival that finishes the quarter in et seconds (constant accel). */
+export const rivalDistance = (et: number, t: number) => Math.min(QUARTER_MILE, (QUARTER_MILE / (et * et)) * t * t);
+
+export const NPC_NAMES = ["Blaze", "Viper", "Ghost", "Nitro Nasser", "Desert Hawk", "Turbo Tariq", "Falcon", "Drift King", "Saluki", "Shadow"];
+/** Rival ETs: each NPC gets a skill spread around your car's estimate; harder difficulty = faster rivals. */
+export function npcField(baseET: number, count: number, difficulty: "easy" | "normal" | "hard", rnd: () => number = Math.random) {
+  const bias = { easy: 1.08, normal: 1.0, hard: 0.94 }[difficulty];
+  const n = Math.max(1, Math.min(5, Math.round(count)));
+  const offset = Math.floor(rnd() * NPC_NAMES.length);
+  return Array.from({ length: n }, (_, i) => ({ name: NPC_NAMES[(offset + i) % NPC_NAMES.length]!, et: +(baseET * bias * (0.95 + rnd() * 0.1)).toFixed(3) }));
+}
+/** Finishing position (1 = winner) of an ET among rival ETs. */
+export const finishPosition = (et: number, rivals: number[]) => 1 + rivals.filter((r) => r < et).length;
