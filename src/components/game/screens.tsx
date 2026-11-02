@@ -532,6 +532,12 @@ export function SettingsScreen() {
               {sw("vibration", "Vibration", "Haptics on limiter & shifts")}
             </div>
           </Panel>
+          <Panel title="Gearbox">
+            <Row label="Forward gears" value={`${st.gears}-speed`}>
+              <Seg value={st.gears} onChange={(v) => setSettings({ gears: v })} options={[6, 7, 8, 9, 10].map((n) => ({ v: n, l: String(n) }))} />
+            </Row>
+            <p className="mt-2 text-xs text-muted-foreground">More gears = shorter first gear and a taller top gear.</p>
+          </Panel>
           <Panel title="Reset">
             <button onClick={() => { if (confirm) { resetAll(); setConfirm(false); } else setConfirm(true); }}
               className={cn("w-full rounded-lg border py-2.5 text-sm font-bold uppercase", confirm ? "border-primary bg-primary text-primary-foreground" : "text-primary")}>
@@ -539,7 +545,12 @@ export function SettingsScreen() {
             </button>
           </Panel>
         </div>
+        <IdeaBox />
       </div>
+      <footer className="pt-6 pb-2 text-center">
+        <div className="text-[10px] tracking-[0.3em] text-muted-foreground uppercase">Owner of the game</div>
+        <div className="font-display mt-1 text-lg font-bold text-primary text-glow">Saeed Khalfan Salem Alshamsi</div>
+      </footer>
     </div>
   );
 }
