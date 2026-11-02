@@ -210,7 +210,12 @@ export function TuneScreen() {
         </Panel>
         <Panel title="Exhaust">
           <div className="space-y-4">
-            <Seg value={t.exhaust} onChange={(v) => setTuning({ exhaust: v })} options={[{ v: "stock", l: "Stock" }, { v: "sport", l: "Sport" }, { v: "straight", l: "Straight" }, { v: "race", l: "Race" }]} />
+            <div className="grid grid-cols-5 gap-1 rounded-lg bg-background/60 p-1">
+              {(Object.keys(EXHAUST) as ExhaustType[]).map((k) => (
+                <button key={k} aria-pressed={t.exhaust === k} onClick={() => setTuning({ exhaust: k })}
+                  className={cn("rounded-md px-1 py-1.5 text-[11px] leading-tight", t.exhaust === k ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{EXHAUST[k].l}</button>
+              ))}
+            </div>
             <Row label="Muffler" value={`${Math.round(t.muffler * 100)}%`}><Slider min={0} max={1} step={0.05} value={[t.muffler]} onValueChange={([v]) => setTuning({ muffler: v ?? 0 })} /></Row>
             <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Pops & bangs</span><Switch checked={t.pops} onCheckedChange={(v) => setTuning({ pops: v })} /></div>
           </div>
