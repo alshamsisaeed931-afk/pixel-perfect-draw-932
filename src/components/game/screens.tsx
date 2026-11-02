@@ -277,6 +277,21 @@ export function TuneScreen() {
             <Row label="Throttle response" value={`${t.throttleResponse.toFixed(1)}x`}><Slider aria-label="Throttle response" min={0.5} max={2} step={0.1} value={[t.throttleResponse]} onValueChange={([v]) => setTuning({ throttleResponse: v ?? 1 })} /></Row>
           </div>
         </Panel>
+        <Panel title="Fuel, ECU & weight">
+          <div className="space-y-4">
+            <Row label="Fuel type"><Seg value={t.fuelType} onChange={(v) => setTuning({ fuelType: v })} options={[{ v: "91", l: "91" }, { v: "95", l: "95" }, { v: "98", l: "98" }, { v: "e85", l: "E85" }, { v: "race", l: "Race" }]} /></Row>
+            <Row label="ECU map"><Seg value={t.ecuMap} onChange={(v) => setTuning({ ecuMap: v })} options={[{ v: "eco", l: "Eco" }, { v: "stock", l: "Stock" }, { v: "sport", l: "Sport" }, { v: "track", l: "Track" }]} /></Row>
+            <Row label={forced ? "Intercooler" : "Intercooler (needs boost)"}><Seg value={t.intercooler} onChange={(v) => setTuning({ intercooler: v })} options={[{ v: "none", l: "None" }, { v: "street", l: "Street" }, { v: "race", l: "Race" }]} /></Row>
+            <Row label="Weight reduction" value={`-${t.weightCut} kg`}><Slider aria-label="Weight reduction" min={0} max={400} step={10} value={[t.weightCut]} onValueChange={([v]) => setTuning({ weightCut: v ?? 0 })} /></Row>
+          </div>
+        </Panel>
+        <Panel title="Nitrous oxide">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Nitrous kit installed</span><Switch aria-label="Nitrous kit" checked={t.nitrous} onCheckedChange={(v) => setTuning({ nitrous: v })} /></div>
+            <Row label="Shot size" value={`${t.nitrousShot} hp`}><Slider aria-label="Nitrous shot" disabled={!t.nitrous} min={50} max={500} step={25} value={[t.nitrousShot]} onValueChange={([v]) => setTuning({ nitrousShot: v ?? 100 })} /></Row>
+            <p className="text-xs text-muted-foreground">Hold the blue NOS button (or X) at wide throttle above 2000 rpm. Bigger shots empty the bottle faster.</p>
+          </div>
+        </Panel>
         <Panel title="Test it">
           <div className="grid grid-cols-[auto_1fr] gap-3">
             <button onClick={() => sim.startStop()} className={cn("font-display h-24 w-20 rounded-xl border-2 text-xs font-bold uppercase", s.on ? "border-primary text-primary" : "border-metal")}>
