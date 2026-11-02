@@ -67,7 +67,7 @@ function Index() {
           {tab === "garage" && <GarageScreen onDrive={() => setTab("drive")} />}
           {tab === "tune" && <TuneScreen />}
           {tab === "dyno" && <DynoScreen />}
-          {tab === "drag" && <DragScreen key={online?.id ?? "npc"} online={online} onOnlineDone={() => setOnline(null)} />}
+          {tab === "drag" && <DragScreen key={online?.id ?? "npc"} online={online} />}
           {tab === "online" && <OnlineScreen onRace={(r) => { setOnline(r); setTab("drag"); }} />}
           {tab === "compare" && <CompareScreen />}
           {tab === "settings" && <SettingsScreen />}
@@ -75,7 +75,7 @@ function Index() {
         <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div className="mx-auto grid max-w-5xl grid-cols-8">
             {TABS.map(({ id, l, I }) => (
-              <button key={id} onClick={() => { if (id === "drag" && tab !== "drag") setOnline(null); setTab(id); }} className={cn("flex min-w-0 flex-col items-center gap-0.5 py-2.5 text-[9px] uppercase tracking-wider sm:text-[10px]", tab === id ? "text-primary" : "text-muted-foreground")}>
+              <button key={id} onClick={() => { if (id !== "drag") setOnline(null); setTab(id); }} className={cn("flex min-w-0 flex-col items-center gap-0.5 py-2.5 text-[9px] uppercase tracking-wider sm:text-[10px]", tab === id ? "text-primary" : "text-muted-foreground")}>
                 <I className="h-5 w-5" />{l}
               </button>
             ))}
