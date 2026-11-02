@@ -80,10 +80,10 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
             <button aria-label="Nitrous" onPointerDown={(ev) => { ev.currentTarget.setPointerCapture(ev.pointerId); sim.ensureAudio(); sim.nitrousIn = true; }}
               onPointerUp={() => (sim.nitrousIn = false)} onPointerCancel={() => (sim.nitrousIn = false)} onContextMenu={(ev) => ev.preventDefault()}
               className={cn("font-display flex flex-1 touch-none select-none items-center justify-center gap-1 rounded-lg border-2 py-2.5 text-sm font-bold uppercase",
-                s.nosOn ? "border-shift-blue bg-shift-blue/25 text-foreground glow" : "border-shift-blue/60 text-foreground")}>
+                s.nosOn ? "border-nos bg-nos/25 text-foreground glow" : "border-nos/60 text-foreground")}>
               <Zap className="h-4 w-4" />{s.nos <= 0 ? "Bottle empty" : s.nosOn ? "NOS!" : `Hold for nitrous · ${tuning.nitrousShot} hp`}
             </button>
-            <div className="w-20"><div className="h-2 overflow-hidden rounded-full bg-background"><div className="h-full bg-shift-blue" style={{ width: `${s.nos * 100}%` }} /></div>
+            <div className="w-20"><div className="h-2 overflow-hidden rounded-full bg-background"><div className="h-full bg-nos" style={{ width: `${s.nos * 100}%` }} /></div>
               <button onClick={() => sim.refillNitrous()} className="mt-1 w-full text-[10px] text-muted-foreground uppercase underline">Refill</button></div>
           </div>
         )}
