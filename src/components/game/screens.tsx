@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Star, Volume2, Power, Trash2, Play, Flag, Gauge, Check } from "lucide-react";
-import { ENGINES, defaultTuning, engineById, hpFrom, steadyBoost, torqueAt, type Engine, type Tuning } from "@/lib/engines";
+import { Star, Volume2, Power, Trash2, Play, Flag, Gauge, Check, Zap } from "lucide-react";
+import { ENGINES, EXHAUST, defaultTuning, engineById, hpFrom, steadyBoost, torqueAt, type Engine, type ExhaustType, type Tuning } from "@/lib/engines";
+import { QUARTER_MILE, estimateET, finishPosition, npcField, rivalDistance } from "@/lib/dashboard";
 import { GEAR_RATIOS, MS_TO, sim } from "@/lib/sim";
 import { useGame, useSim } from "@/lib/store";
 import { Slider } from "@/components/ui/slider";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LineChart, Panel, Pedal, Seg, Stat, Tach, Speedometer, ShiftLight } from "./ui";
 import { Shifter } from "./shifter";
+import { IdeaBox, submitOnlineTime, type OnlineRace } from "./online";
 
 export const tachMax = (e: Engine) => (e.redline > 10000 ? 20000 : 10000);
 export function curve(e: Engine, t: Tuning) {
@@ -24,16 +26,18 @@ function useKeys() {
       if ((ev.target as HTMLElement)?.tagName === "INPUT") return;
       if (ev.code === "Space" || ev.code === "ArrowUp" || ev.code === "KeyW") { sim.ensureAudio(); sim.throttleIn = 1; ev.preventDefault(); }
       if (ev.code === "ShiftLeft" || ev.code === "KeyC") sim.clutchIn = 1;
+      if (ev.code === "KeyX") sim.nitrousIn = true;
       if (ev.code === "KeyS" && !ev.repeat) sim.startStop();
-      const map: Record<string, number> = { Digit1: 1, Digit2: 2, Digit3: 3, Digit4: 4, Digit5: 5, Digit6: 6, KeyN: 0, KeyR: -1, Digit0: 0 };
+      const map: Record<string, number> = { Digit1: 1, Digit2: 2, Digit3: 3, Digit4: 4, Digit5: 5, Digit6: 6, Digit7: 7, Digit8: 8, Digit9: 9, KeyT: 10, KeyN: 0, KeyR: -1, Digit0: 0 };
       if (ev.code in map && !ev.repeat) sim.shift(map[ev.code]!);
     };
     const up = (ev: KeyboardEvent) => {
       if (ev.code === "Space" || ev.code === "ArrowUp" || ev.code === "KeyW") sim.throttleIn = 0;
       if (ev.code === "ShiftLeft" || ev.code === "KeyC") sim.clutchIn = 0;
+      if (ev.code === "KeyX") sim.nitrousIn = false;
     };
     window.addEventListener("keydown", down); window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); sim.throttleIn = 0; sim.clutchIn = 0; };
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); sim.throttleIn = 0; sim.clutchIn = 0; sim.nitrousIn = false; };
   }, []);
 }
 
@@ -61,7 +65,7 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
         </div>
       </div>
       <div className="space-y-2 sm:space-y-3">
-        <Shifter gear={s.gear} onShift={(gear) => sim.shift(gear)} />
+        <Shifter gear={s.gear} gears={settings.gears} onShift={(gear) => sim.shift(gear)} />
         <div className="grid grid-cols-[1fr_auto_1.4fr] items-stretch gap-2 sm:gap-3">
           <Pedal label="Clutch" variant="clutch" className="h-24 sm:h-36" onChange={(v) => { sim.ensureAudio(); sim.clutchIn = v; }} />
           <button onClick={() => sim.startStop()}
@@ -71,8 +75,20 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
           </button>
           <Pedal label="Gas" className="h-24 sm:h-36" onChange={(v) => { sim.ensureAudio(); sim.throttleIn = v; }} />
         </div>
+        {tuning.nitrous && (
+          <div className="flex items-center gap-2">
+            <button aria-label="Nitrous" onPointerDown={(ev) => { ev.currentTarget.setPointerCapture(ev.pointerId); sim.ensureAudio(); sim.nitrousIn = true; }}
+              onPointerUp={() => (sim.nitrousIn = false)} onPointerCancel={() => (sim.nitrousIn = false)} onContextMenu={(ev) => ev.preventDefault()}
+              className={cn("font-display flex flex-1 touch-none select-none items-center justify-center gap-1 rounded-lg border-2 py-2.5 text-sm font-bold uppercase",
+                s.nosOn ? "border-nos bg-nos/25 text-foreground glow" : "border-nos/60 text-foreground")}>
+              <Zap className="h-4 w-4" />{s.nos <= 0 ? "Bottle empty" : s.nosOn ? "NOS!" : `Hold for nitrous · ${tuning.nitrousShot} hp`}
+            </button>
+            <div className="w-20"><div className="h-2 overflow-hidden rounded-full bg-background"><div className="h-full bg-nos" style={{ width: `${s.nos * 100}%` }} /></div>
+              <button onClick={() => sim.refillNitrous()} className="mt-1 w-full text-[10px] text-muted-foreground uppercase underline">Refill</button></div>
+          </div>
+        )}
         <Msg />
-        <p className="hidden text-center text-xs text-muted-foreground md:block">Keys: S start · Space gas · C clutch · 1-6 / N / R gears</p>
+        <p className="hidden text-center text-xs text-muted-foreground md:block">Keys: S start · Space gas · C clutch · X nitrous · 1-9 / T(10) / N / R gears</p>
       </div>
     </div>
   );
@@ -194,7 +210,12 @@ export function TuneScreen() {
         </Panel>
         <Panel title="Exhaust">
           <div className="space-y-4">
-            <Seg value={t.exhaust} onChange={(v) => setTuning({ exhaust: v })} options={[{ v: "stock", l: "Stock" }, { v: "sport", l: "Sport" }, { v: "straight", l: "Straight" }, { v: "race", l: "Race" }]} />
+            <div className="grid grid-cols-5 gap-1 rounded-lg bg-background/60 p-1">
+              {(Object.keys(EXHAUST) as ExhaustType[]).map((k) => (
+                <button key={k} aria-pressed={t.exhaust === k} onClick={() => setTuning({ exhaust: k })}
+                  className={cn("rounded-md px-1 py-1.5 text-[11px] leading-tight", t.exhaust === k ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{EXHAUST[k].l}</button>
+              ))}
+            </div>
             <Row label="Muffler" value={`${Math.round(t.muffler * 100)}%`}><Slider min={0} max={1} step={0.05} value={[t.muffler]} onValueChange={([v]) => setTuning({ muffler: v ?? 0 })} /></Row>
             <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Pops & bangs</span><Switch checked={t.pops} onCheckedChange={(v) => setTuning({ pops: v })} /></div>
           </div>
@@ -254,6 +275,21 @@ export function TuneScreen() {
             <Row label="Flywheel weight" value={`${Math.round(t.flywheel * 100)}%`}><Slider aria-label="Flywheel weight" min={0.5} max={1.5} step={0.05} value={[t.flywheel]} onValueChange={([v]) => setTuning({ flywheel: v ?? 1 })} /></Row>
             <Row label="Final drive" value={`${t.finalDrive.toFixed(2)}:1`}><Slider aria-label="Final drive" min={2.5} max={5} step={0.05} value={[t.finalDrive]} onValueChange={([v]) => setTuning({ finalDrive: v ?? 3.7 })} /></Row>
             <Row label="Throttle response" value={`${t.throttleResponse.toFixed(1)}x`}><Slider aria-label="Throttle response" min={0.5} max={2} step={0.1} value={[t.throttleResponse]} onValueChange={([v]) => setTuning({ throttleResponse: v ?? 1 })} /></Row>
+          </div>
+        </Panel>
+        <Panel title="Fuel, ECU & weight">
+          <div className="space-y-4">
+            <Row label="Fuel type"><Seg value={t.fuelType} onChange={(v) => setTuning({ fuelType: v })} options={[{ v: "91", l: "91" }, { v: "95", l: "95" }, { v: "98", l: "98" }, { v: "e85", l: "E85" }, { v: "race", l: "Race" }]} /></Row>
+            <Row label="ECU map"><Seg value={t.ecuMap} onChange={(v) => setTuning({ ecuMap: v })} options={[{ v: "eco", l: "Eco" }, { v: "stock", l: "Stock" }, { v: "sport", l: "Sport" }, { v: "track", l: "Track" }]} /></Row>
+            <Row label={forced ? "Intercooler" : "Intercooler (needs boost)"}><Seg value={t.intercooler} onChange={(v) => setTuning({ intercooler: v })} options={[{ v: "none", l: "None" }, { v: "street", l: "Street" }, { v: "race", l: "Race" }]} /></Row>
+            <Row label="Weight reduction" value={`-${t.weightCut} kg`}><Slider aria-label="Weight reduction" min={0} max={400} step={10} value={[t.weightCut]} onValueChange={([v]) => setTuning({ weightCut: v ?? 0 })} /></Row>
+          </div>
+        </Panel>
+        <Panel title="Nitrous oxide">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Nitrous kit installed</span><Switch aria-label="Nitrous kit" checked={t.nitrous} onCheckedChange={(v) => setTuning({ nitrous: v })} /></div>
+            <Row label="Shot size" value={`${t.nitrousShot} hp`}><Slider aria-label="Nitrous shot" disabled={!t.nitrous} min={50} max={500} step={25} value={[t.nitrousShot]} onValueChange={([v]) => setTuning({ nitrousShot: v ?? 100 })} /></Row>
+            <p className="text-xs text-muted-foreground">Hold the blue NOS button (or X) at wide throttle above 2000 rpm. Bigger shots empty the bottle faster.</p>
           </div>
         </Panel>
         <Panel title="Test it">
@@ -319,62 +355,89 @@ export function DynoScreen() {
 }
 
 type Phase = "idle" | "stage" | "race" | "done" | "foul";
-export function DragScreen() {
+type Rival = { name: string; et: number };
+export function DragScreen({ online, onOnlineDone }: { online?: OnlineRace | null; onOnlineDone?: () => void }) {
   const s = useSim();
   const g = useGame();
   const e = engineById(g.engineId);
   const [phase, setPhase] = useState<Phase>("idle");
   const [lights, setLights] = useState(0);
-  const t0 = useRef(0); const res = useRef({ et: 0, trap: 0, opp: 0 });
-  const oppET = useMemo(() => {
-    const p = peak(e, g.tuning); return 5.825 * Math.cbrt((e.mass * 2.2046 + 180) / p.hp) * (0.97 + Math.random() * 0.08);
-  }, [e, g.tuning, phase === "stage"]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [count, setCount] = useState(3);
+  const [diff, setDiff] = useState<"easy" | "normal" | "hard">("normal");
+  const [rivals, setRivals] = useState<Rival[]>([]);
+  const [note, setNote] = useState("");
+  const t0 = useRef(0); const res = useRef({ et: 0, trap: 0 });
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
+  const makeField = (): Rival[] => {
+    if (online) return online.opponentEt != null ? [{ name: online.opponent, et: online.opponentEt }] : [];
+    const p = peak(e, g.tuning);
+    return npcField(estimateET(p.hp, Math.max(e.mass * 0.5, e.mass - g.tuning.weightCut)), count, diff);
+  };
   const stage = () => {
     if (!s.on) { sim.startStop(); }
-    sim.resetRun(); setPhase("stage"); setLights(0);
-    [1, 2, 3].forEach((n) => setTimeout(() => setLights(n), 900 * n + 400));
-    setTimeout(() => { setLights(4); t0.current = sim.get().time; setPhase((p) => (p === "stage" ? "race" : p)); }, 900 * 4 + 400);
+    sim.resetRun(); sim.refillNitrous(); setPhase("stage"); setLights(0); setNote(""); setRivals(makeField());
+    timers.current.forEach(clearTimeout);
+    timers.current = [1, 2, 3].map((n) => setTimeout(() => setLights(n), 900 * n + 400));
+    timers.current.push(setTimeout(() => { setLights(4); t0.current = sim.get().time; setPhase((p) => (p === "stage" ? "race" : p)); }, 900 * 4 + 400));
   };
   useEffect(() => {
     if (phase === "stage" && s.dist > 0.6) setPhase("foul");
-    if (phase === "race" && s.dist >= 402.3) {
-      const et = s.time - t0.current; res.current = { et, trap: Math.abs(s.speed), opp: oppET };
+    if (phase === "race" && s.dist >= QUARTER_MILE) {
+      const et = s.time - t0.current; res.current = { et, trap: Math.abs(s.speed) };
       g.setBest(e.id, et); setPhase("done");
+      if (online) {
+        setNote("Sending your time…");
+        void submitOnlineTime(online.id, et).then((err) => { setNote(err ? `Could not send time: ${err}` : online.opponentEt != null ? "Time sent — race finished!" : `Time sent — waiting for ${online.opponent}.`); onOnlineDone?.(); });
+      }
     }
   }, [s.dist, phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const el = phase === "race" ? s.time - t0.current : phase === "done" ? res.current.et : 0;
-  const oppD = phase === "race" ? Math.min(402.3, 0.5 * (2 * 402.3 / (oppET * oppET)) * el * el) : phase === "done" ? 402.3 : 0;
-  const me = phase === "race" || phase === "done" ? Math.min(402.3, s.dist) : 0;
+  const me = phase === "race" || phase === "done" ? Math.min(QUARTER_MILE, s.dist) : 0;
   const u = MS_TO[g.settings.units];
+  const pos = finishPosition(res.current.et, rivals.map((r) => r.et));
+  const lanes = [{ l: "YOU", d: me, c: "bg-primary" }, ...rivals.map((r) => ({ l: r.name, d: phase === "race" ? rivalDistance(r.et, el) : phase === "done" ? QUARTER_MILE : 0, c: "bg-metal" }))];
+  const busy = phase === "stage" || phase === "race";
   return (
     <Cockpit>
-      <Header e={e} mode="Drag Race · 1/4 mile" />
+      <Header e={e} mode={online ? `Online · vs ${online.opponent}` : "Drag Race · 1/4 mile"} />
       <Panel>
+        {!online && (
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <div><div className="mb-1 text-[10px] tracking-widest text-muted-foreground uppercase">Rivals</div>
+              <Seg value={count} onChange={(v) => !busy && setCount(v)} options={[1, 2, 3, 4, 5].map((n) => ({ v: n, l: String(n) }))} /></div>
+            <div><div className="mb-1 text-[10px] tracking-widest text-muted-foreground uppercase">Difficulty</div>
+              <Seg value={diff} onChange={(v) => !busy && setDiff(v)} options={[{ v: "easy", l: "Easy" }, { v: "normal", l: "Pro" }, { v: "hard", l: "Hard" }]} /></div>
+          </div>
+        )}
         <div className="flex items-center justify-center gap-2">
           {[1, 2, 3].map((n) => <div key={n} className={cn("h-6 w-6 rounded-full border", lights >= n && lights < 4 ? "bg-warn" : "bg-muted")} />)}
           <div className={cn("h-6 w-6 rounded-full border", lights === 4 ? "bg-ok" : "bg-muted", phase === "foul" && "bg-primary")} />
           <span className="ml-3 font-mono text-xl">{el.toFixed(3)}s</span>
         </div>
-        {[{ l: "YOU", d: me, c: "bg-primary" }, { l: "RIVAL", d: oppD, c: "bg-metal" }].map((r) => (
-          <div key={r.l} className="mt-2 flex items-center gap-2 text-xs">
-            <span className="w-10 font-display">{r.l}</span>
-            <div className="h-3 flex-1 overflow-hidden rounded-full bg-background"><div className={cn("h-full", r.c)} style={{ width: `${(r.d / 402.3) * 100}%` }} /></div>
+        {lanes.map((r, i) => (
+          <div key={i} className="mt-2 flex items-center gap-2 text-xs">
+            <span className="w-20 truncate font-display">{r.l}</span>
+            <div className="h-3 flex-1 overflow-hidden rounded-full bg-background"><div className={cn("h-full", r.c)} style={{ width: `${(r.d / QUARTER_MILE) * 100}%` }} /></div>
             <Flag className="h-3 w-3 text-muted-foreground" />
           </div>
         ))}
+        {online && online.opponentEt == null && <p className="mt-2 text-center text-xs text-muted-foreground">{online.opponent} hasn't raced yet — set the time to beat!</p>}
         <div className="mt-3">
           {phase === "done" && (
-            <p className="mb-2 text-center text-sm">
-              <b className={res.current.et < res.current.opp ? "text-ok" : "text-primary"}>{res.current.et < res.current.opp ? "YOU WIN" : "YOU LOSE"}</b>{" "}
-              · ET {res.current.et.toFixed(2)}s · Trap {(res.current.trap * u).toFixed(0)} {g.settings.units === "metric" ? "km/h" : "mph"} · Rival {res.current.opp.toFixed(2)}s
-            </p>
+            <div className="mb-2 text-center text-sm">
+              {rivals.length > 0 && <b className={pos === 1 ? "text-ok" : "text-primary"}>{pos === 1 ? "YOU WIN!" : `P${pos} of ${rivals.length + 1}`}</b>}{" "}
+              · ET {res.current.et.toFixed(2)}s · Trap {(res.current.trap * u).toFixed(0)} {g.settings.units === "metric" ? "km/h" : "mph"}
+              <div className="mt-1 text-xs text-muted-foreground">{[...rivals].sort((a, b) => a.et - b.et).map((r) => `${r.name} ${r.et.toFixed(2)}s`).join(" · ")}</div>
+            </div>
           )}
+          {note && <p className="mb-2 text-center text-xs text-primary">{note}</p>}
           {phase === "foul" && <p className="mb-2 text-center text-sm font-bold text-primary">JUMP START — RED LIGHT!</p>}
-          <button disabled={phase === "stage" || phase === "race"} onClick={stage}
+          <button disabled={busy || (!!online && phase === "done")} onClick={stage}
             className="font-display flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-bold text-primary-foreground uppercase disabled:opacity-50">
-            <Play className="h-4 w-4" />{phase === "idle" ? "Stage" : phase === "stage" ? "Wait for green…" : phase === "race" ? "Go go go!" : "Race again"}
+            <Play className="h-4 w-4" />{phase === "idle" ? "Stage" : phase === "stage" ? "Wait for green…" : phase === "race" ? "Go go go!" : online ? "Done" : "Race again"}
           </button>
           <p className="mt-2 text-center text-xs text-muted-foreground">Hold clutch, select 1st, build revs, release on green. Best: {g.best[e.id] ? g.best[e.id]!.toFixed(2) + "s" : "—"}</p>
         </div>
@@ -469,6 +532,12 @@ export function SettingsScreen() {
               {sw("vibration", "Vibration", "Haptics on limiter & shifts")}
             </div>
           </Panel>
+          <Panel title="Gearbox">
+            <Row label="Forward gears" value={`${st.gears}-speed`}>
+              <Seg value={st.gears} onChange={(v) => setSettings({ gears: v })} options={[6, 7, 8, 9, 10].map((n) => ({ v: n, l: String(n) }))} />
+            </Row>
+            <p className="mt-2 text-xs text-muted-foreground">More gears = shorter first gear and a taller top gear.</p>
+          </Panel>
           <Panel title="Reset">
             <button onClick={() => { if (confirm) { resetAll(); setConfirm(false); } else setConfirm(true); }}
               className={cn("w-full rounded-lg border py-2.5 text-sm font-bold uppercase", confirm ? "border-primary bg-primary text-primary-foreground" : "text-primary")}>
@@ -476,7 +545,12 @@ export function SettingsScreen() {
             </button>
           </Panel>
         </div>
+        <IdeaBox />
       </div>
+      <footer className="pt-6 pb-2 text-center">
+        <div className="text-[10px] tracking-[0.3em] text-muted-foreground uppercase">Owner of the game</div>
+        <div className="font-display mt-1 text-lg font-bold text-primary text-glow">Saeed Khalfan Salem Alshamsi</div>
+      </footer>
     </div>
   );
 }
