@@ -355,62 +355,89 @@ export function DynoScreen() {
 }
 
 type Phase = "idle" | "stage" | "race" | "done" | "foul";
-export function DragScreen() {
+type Rival = { name: string; et: number };
+export function DragScreen({ online, onOnlineDone }: { online?: OnlineRace | null; onOnlineDone?: () => void }) {
   const s = useSim();
   const g = useGame();
   const e = engineById(g.engineId);
   const [phase, setPhase] = useState<Phase>("idle");
   const [lights, setLights] = useState(0);
-  const t0 = useRef(0); const res = useRef({ et: 0, trap: 0, opp: 0 });
-  const oppET = useMemo(() => {
-    const p = peak(e, g.tuning); return 5.825 * Math.cbrt((e.mass * 2.2046 + 180) / p.hp) * (0.97 + Math.random() * 0.08);
-  }, [e, g.tuning, phase === "stage"]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [count, setCount] = useState(3);
+  const [diff, setDiff] = useState<"easy" | "normal" | "hard">("normal");
+  const [rivals, setRivals] = useState<Rival[]>([]);
+  const [note, setNote] = useState("");
+  const t0 = useRef(0); const res = useRef({ et: 0, trap: 0 });
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
+  const makeField = (): Rival[] => {
+    if (online) return online.opponentEt != null ? [{ name: online.opponent, et: online.opponentEt }] : [];
+    const p = peak(e, g.tuning);
+    return npcField(estimateET(p.hp, Math.max(e.mass * 0.5, e.mass - g.tuning.weightCut)), count, diff);
+  };
   const stage = () => {
     if (!s.on) { sim.startStop(); }
-    sim.resetRun(); setPhase("stage"); setLights(0);
-    [1, 2, 3].forEach((n) => setTimeout(() => setLights(n), 900 * n + 400));
-    setTimeout(() => { setLights(4); t0.current = sim.get().time; setPhase((p) => (p === "stage" ? "race" : p)); }, 900 * 4 + 400);
+    sim.resetRun(); sim.refillNitrous(); setPhase("stage"); setLights(0); setNote(""); setRivals(makeField());
+    timers.current.forEach(clearTimeout);
+    timers.current = [1, 2, 3].map((n) => setTimeout(() => setLights(n), 900 * n + 400));
+    timers.current.push(setTimeout(() => { setLights(4); t0.current = sim.get().time; setPhase((p) => (p === "stage" ? "race" : p)); }, 900 * 4 + 400));
   };
   useEffect(() => {
     if (phase === "stage" && s.dist > 0.6) setPhase("foul");
-    if (phase === "race" && s.dist >= 402.3) {
-      const et = s.time - t0.current; res.current = { et, trap: Math.abs(s.speed), opp: oppET };
+    if (phase === "race" && s.dist >= QUARTER_MILE) {
+      const et = s.time - t0.current; res.current = { et, trap: Math.abs(s.speed) };
       g.setBest(e.id, et); setPhase("done");
+      if (online) {
+        setNote("Sending your time…");
+        void submitOnlineTime(online.id, et).then((err) => { setNote(err ? `Could not send time: ${err}` : online.opponentEt != null ? "Time sent — race finished!" : `Time sent — waiting for ${online.opponent}.`); onOnlineDone?.(); });
+      }
     }
   }, [s.dist, phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const el = phase === "race" ? s.time - t0.current : phase === "done" ? res.current.et : 0;
-  const oppD = phase === "race" ? Math.min(402.3, 0.5 * (2 * 402.3 / (oppET * oppET)) * el * el) : phase === "done" ? 402.3 : 0;
-  const me = phase === "race" || phase === "done" ? Math.min(402.3, s.dist) : 0;
+  const me = phase === "race" || phase === "done" ? Math.min(QUARTER_MILE, s.dist) : 0;
   const u = MS_TO[g.settings.units];
+  const pos = finishPosition(res.current.et, rivals.map((r) => r.et));
+  const lanes = [{ l: "YOU", d: me, c: "bg-primary" }, ...rivals.map((r) => ({ l: r.name, d: phase === "race" ? rivalDistance(r.et, el) : phase === "done" ? QUARTER_MILE : 0, c: "bg-metal" }))];
+  const busy = phase === "stage" || phase === "race";
   return (
     <Cockpit>
-      <Header e={e} mode="Drag Race · 1/4 mile" />
+      <Header e={e} mode={online ? `Online · vs ${online.opponent}` : "Drag Race · 1/4 mile"} />
       <Panel>
+        {!online && (
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <div><div className="mb-1 text-[10px] tracking-widest text-muted-foreground uppercase">Rivals</div>
+              <Seg value={count} onChange={(v) => !busy && setCount(v)} options={[1, 2, 3, 4, 5].map((n) => ({ v: n, l: String(n) }))} /></div>
+            <div><div className="mb-1 text-[10px] tracking-widest text-muted-foreground uppercase">Difficulty</div>
+              <Seg value={diff} onChange={(v) => !busy && setDiff(v)} options={[{ v: "easy", l: "Easy" }, { v: "normal", l: "Pro" }, { v: "hard", l: "Hard" }]} /></div>
+          </div>
+        )}
         <div className="flex items-center justify-center gap-2">
           {[1, 2, 3].map((n) => <div key={n} className={cn("h-6 w-6 rounded-full border", lights >= n && lights < 4 ? "bg-warn" : "bg-muted")} />)}
           <div className={cn("h-6 w-6 rounded-full border", lights === 4 ? "bg-ok" : "bg-muted", phase === "foul" && "bg-primary")} />
           <span className="ml-3 font-mono text-xl">{el.toFixed(3)}s</span>
         </div>
-        {[{ l: "YOU", d: me, c: "bg-primary" }, { l: "RIVAL", d: oppD, c: "bg-metal" }].map((r) => (
-          <div key={r.l} className="mt-2 flex items-center gap-2 text-xs">
-            <span className="w-10 font-display">{r.l}</span>
-            <div className="h-3 flex-1 overflow-hidden rounded-full bg-background"><div className={cn("h-full", r.c)} style={{ width: `${(r.d / 402.3) * 100}%` }} /></div>
+        {lanes.map((r, i) => (
+          <div key={i} className="mt-2 flex items-center gap-2 text-xs">
+            <span className="w-20 truncate font-display">{r.l}</span>
+            <div className="h-3 flex-1 overflow-hidden rounded-full bg-background"><div className={cn("h-full", r.c)} style={{ width: `${(r.d / QUARTER_MILE) * 100}%` }} /></div>
             <Flag className="h-3 w-3 text-muted-foreground" />
           </div>
         ))}
+        {online && online.opponentEt == null && <p className="mt-2 text-center text-xs text-muted-foreground">{online.opponent} hasn't raced yet — set the time to beat!</p>}
         <div className="mt-3">
           {phase === "done" && (
-            <p className="mb-2 text-center text-sm">
-              <b className={res.current.et < res.current.opp ? "text-ok" : "text-primary"}>{res.current.et < res.current.opp ? "YOU WIN" : "YOU LOSE"}</b>{" "}
-              · ET {res.current.et.toFixed(2)}s · Trap {(res.current.trap * u).toFixed(0)} {g.settings.units === "metric" ? "km/h" : "mph"} · Rival {res.current.opp.toFixed(2)}s
-            </p>
+            <div className="mb-2 text-center text-sm">
+              {rivals.length > 0 && <b className={pos === 1 ? "text-ok" : "text-primary"}>{pos === 1 ? "YOU WIN!" : `P${pos} of ${rivals.length + 1}`}</b>}{" "}
+              · ET {res.current.et.toFixed(2)}s · Trap {(res.current.trap * u).toFixed(0)} {g.settings.units === "metric" ? "km/h" : "mph"}
+              <div className="mt-1 text-xs text-muted-foreground">{[...rivals].sort((a, b) => a.et - b.et).map((r) => `${r.name} ${r.et.toFixed(2)}s`).join(" · ")}</div>
+            </div>
           )}
+          {note && <p className="mb-2 text-center text-xs text-primary">{note}</p>}
           {phase === "foul" && <p className="mb-2 text-center text-sm font-bold text-primary">JUMP START — RED LIGHT!</p>}
-          <button disabled={phase === "stage" || phase === "race"} onClick={stage}
+          <button disabled={busy || (!!online && phase === "done")} onClick={stage}
             className="font-display flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-bold text-primary-foreground uppercase disabled:opacity-50">
-            <Play className="h-4 w-4" />{phase === "idle" ? "Stage" : phase === "stage" ? "Wait for green…" : phase === "race" ? "Go go go!" : "Race again"}
+            <Play className="h-4 w-4" />{phase === "idle" ? "Stage" : phase === "stage" ? "Wait for green…" : phase === "race" ? "Go go go!" : online ? "Done" : "Race again"}
           </button>
           <p className="mt-2 text-center text-xs text-muted-foreground">Hold clutch, select 1st, build revs, release on green. Best: {g.best[e.id] ? g.best[e.id]!.toFixed(2) + "s" : "—"}</p>
         </div>
