@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Star, Volume2, Power, Trash2, Play, Flag, Gauge, Check } from "lucide-react";
-import { ENGINES, defaultTuning, engineById, hpFrom, steadyBoost, torqueAt, type Engine, type Tuning } from "@/lib/engines";
+import { Star, Volume2, Power, Trash2, Play, Flag, Gauge, Check, Zap } from "lucide-react";
+import { ENGINES, EXHAUST, defaultTuning, engineById, hpFrom, steadyBoost, torqueAt, type Engine, type ExhaustType, type Tuning } from "@/lib/engines";
+import { QUARTER_MILE, estimateET, finishPosition, npcField, rivalDistance } from "@/lib/dashboard";
 import { GEAR_RATIOS, MS_TO, sim } from "@/lib/sim";
 import { useGame, useSim } from "@/lib/store";
 import { Slider } from "@/components/ui/slider";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LineChart, Panel, Pedal, Seg, Stat, Tach, Speedometer, ShiftLight } from "./ui";
 import { Shifter } from "./shifter";
+import { IdeaBox, submitOnlineTime, type OnlineRace } from "./online";
 
 export const tachMax = (e: Engine) => (e.redline > 10000 ? 20000 : 10000);
 export function curve(e: Engine, t: Tuning) {
@@ -24,16 +26,18 @@ function useKeys() {
       if ((ev.target as HTMLElement)?.tagName === "INPUT") return;
       if (ev.code === "Space" || ev.code === "ArrowUp" || ev.code === "KeyW") { sim.ensureAudio(); sim.throttleIn = 1; ev.preventDefault(); }
       if (ev.code === "ShiftLeft" || ev.code === "KeyC") sim.clutchIn = 1;
+      if (ev.code === "KeyX") sim.nitrousIn = true;
       if (ev.code === "KeyS" && !ev.repeat) sim.startStop();
-      const map: Record<string, number> = { Digit1: 1, Digit2: 2, Digit3: 3, Digit4: 4, Digit5: 5, Digit6: 6, KeyN: 0, KeyR: -1, Digit0: 0 };
+      const map: Record<string, number> = { Digit1: 1, Digit2: 2, Digit3: 3, Digit4: 4, Digit5: 5, Digit6: 6, Digit7: 7, Digit8: 8, Digit9: 9, KeyT: 10, KeyN: 0, KeyR: -1, Digit0: 0 };
       if (ev.code in map && !ev.repeat) sim.shift(map[ev.code]!);
     };
     const up = (ev: KeyboardEvent) => {
       if (ev.code === "Space" || ev.code === "ArrowUp" || ev.code === "KeyW") sim.throttleIn = 0;
       if (ev.code === "ShiftLeft" || ev.code === "KeyC") sim.clutchIn = 0;
+      if (ev.code === "KeyX") sim.nitrousIn = false;
     };
     window.addEventListener("keydown", down); window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); sim.throttleIn = 0; sim.clutchIn = 0; };
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); sim.throttleIn = 0; sim.clutchIn = 0; sim.nitrousIn = false; };
   }, []);
 }
 
@@ -61,7 +65,7 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
         </div>
       </div>
       <div className="space-y-2 sm:space-y-3">
-        <Shifter gear={s.gear} onShift={(gear) => sim.shift(gear)} />
+        <Shifter gear={s.gear} gears={settings.gears} onShift={(gear) => sim.shift(gear)} />
         <div className="grid grid-cols-[1fr_auto_1.4fr] items-stretch gap-2 sm:gap-3">
           <Pedal label="Clutch" variant="clutch" className="h-24 sm:h-36" onChange={(v) => { sim.ensureAudio(); sim.clutchIn = v; }} />
           <button onClick={() => sim.startStop()}
@@ -71,8 +75,20 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
           </button>
           <Pedal label="Gas" className="h-24 sm:h-36" onChange={(v) => { sim.ensureAudio(); sim.throttleIn = v; }} />
         </div>
+        {tuning.nitrous && (
+          <div className="flex items-center gap-2">
+            <button aria-label="Nitrous" onPointerDown={(ev) => { ev.currentTarget.setPointerCapture(ev.pointerId); sim.ensureAudio(); sim.nitrousIn = true; }}
+              onPointerUp={() => (sim.nitrousIn = false)} onPointerCancel={() => (sim.nitrousIn = false)} onContextMenu={(ev) => ev.preventDefault()}
+              className={cn("font-display flex flex-1 touch-none select-none items-center justify-center gap-1 rounded-lg border-2 py-2.5 text-sm font-bold uppercase",
+                s.nosOn ? "border-shift-blue bg-shift-blue/25 text-foreground glow" : "border-shift-blue/60 text-foreground")}>
+              <Zap className="h-4 w-4" />{s.nos <= 0 ? "Bottle empty" : s.nosOn ? "NOS!" : `Hold for nitrous · ${tuning.nitrousShot} hp`}
+            </button>
+            <div className="w-20"><div className="h-2 overflow-hidden rounded-full bg-background"><div className="h-full bg-shift-blue" style={{ width: `${s.nos * 100}%` }} /></div>
+              <button onClick={() => sim.refillNitrous()} className="mt-1 w-full text-[10px] text-muted-foreground uppercase underline">Refill</button></div>
+          </div>
+        )}
         <Msg />
-        <p className="hidden text-center text-xs text-muted-foreground md:block">Keys: S start · Space gas · C clutch · 1-6 / N / R gears</p>
+        <p className="hidden text-center text-xs text-muted-foreground md:block">Keys: S start · Space gas · C clutch · X nitrous · 1-9 / T(10) / N / R gears</p>
       </div>
     </div>
   );
