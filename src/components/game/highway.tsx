@@ -5,7 +5,7 @@ import { CAR_W, LANE_W, ROAD_HALF, collides, isOffRoad, lateralStep, offRoadDrag
 import { MS_TO, sim } from "@/lib/sim";
 import { useGame, useSim } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Pedal, ShiftLight } from "./ui";
+import { Pedal } from "./ui";
 import { Shifter } from "./shifter";
 import { Msg, useKeys } from "./screens";
 
@@ -61,7 +61,7 @@ function SteeringWheel({ steer }: { steer: React.MutableRefObject<number> }) {
   );
 }
 
-function Road({ steer, crashes }: { steer: React.MutableRefObject<number>; crashes: (n: number) => void }) {
+function Road({ steer, crashes, shiftRpm }: { steer: React.MutableRefObject<number>; crashes: (n: number) => void; shiftRpm: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const { settings } = useGame();
   const units = settings.units;
@@ -116,7 +116,7 @@ function Road({ steer, crashes }: { steer: React.MutableRefObject<number>; crash
         ctx.fillStyle = pal.primary; ctx.fillRect(p.x - w / 2, p.y - h * 0.45, w * 0.2, h * 0.12); ctx.fillRect(p.x + w * 0.3, p.y - h * 0.45, w * 0.2, h * 0.12);
       }
       // player car (rear view), leans with steering
-      const cw = W * 0.3, ch = cw * 0.42, cx = W / 2, cy = H - ch * 0.25;
+      const cw = W * 0.22, ch = cw * 0.42, cx = W / 2, cy = H - ch * 0.25;
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(steer.current * 0.04);
       ctx.fillStyle = pal.bg; ctx.fillRect(-cw / 2, -ch * 0.15, cw * 0.18, ch * 0.3); ctx.fillRect(cw / 2 - cw * 0.18, -ch * 0.15, cw * 0.18, ch * 0.3);
       ctx.fillStyle = pal.primary; ctx.beginPath(); ctx.moveTo(-cw / 2, 0); ctx.lineTo(-cw * 0.42, -ch); ctx.lineTo(cw * 0.42, -ch); ctx.lineTo(cw / 2, 0); ctx.fill();
@@ -131,6 +131,7 @@ function Road({ steer, crashes }: { steer: React.MutableRefObject<number>; crash
       ctx.fillText(`${spd.toFixed(0)}`, 16, 8 + H * 0.1);
       ctx.font = `${Math.round(H * 0.045)}px "Share Tech Mono", monospace`;
       ctx.fillText(`${units === "metric" ? "KM/H" : "MPH"} · G ${s.gear === -1 ? "R" : s.gear === 0 ? "N" : s.gear} · ${(s.rpm / 1000).toFixed(1)}k`, 16, 8 + H * 0.17);
+      if (shiftRpm > 0 && s.on && s.rpm >= shiftRpm) { ctx.fillStyle = pal.primary; ctx.fillRect(8, 8 + H * 0.2, W * 0.32, H * 0.035); ctx.fillText("SHIFT", 16, 8 + H * 0.27); ctx.fillStyle = pal.line; }
       if (isOffRoad(x)) { ctx.fillStyle = pal.primary; ctx.textAlign = "center"; ctx.fillText("OFF ROAD", W / 2, H * 0.1); ctx.textAlign = "left"; }
       const km = pz / 1000 * (units === "metric" ? 1 : 0.621);
       ctx.textAlign = "right"; ctx.fillStyle = pal.line; ctx.fillText(`TRIP ${km.toFixed(2)} ${units === "metric" ? "km" : "mi"}`, W - 12, 8 + H * 0.06); ctx.textAlign = "left";
@@ -138,7 +139,7 @@ function Road({ steer, crashes }: { steer: React.MutableRefObject<number>; crash
     };
     raf = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); sim.extraDrag = 0; };
-  }, [steer, crashes, units]);
+  }, [steer, crashes, units, shiftRpm]);
   return <canvas ref={canvas} aria-label="Highway view" className="block h-full w-full rounded-xl border-2 border-metal" />;
 }
 
@@ -163,8 +164,7 @@ export function HighwayScreen() {
             <button onClick={() => { sim.resetRun(); setHits(0); setRun((r) => r + 1); }} className="flex items-center gap-1 rounded border px-2 py-1 uppercase"><RotateCcw className="h-3 w-3" />Reset</button>
           </div>
         </div>
-        <div className="h-[30vh] min-h-36 w-full landscape:h-[55vh]"><Road key={run} steer={steer} crashes={setHits} /></div>
-        <ShiftLight rpm={s.rpm} target={tuning.shiftRpm} enabled={tuning.shiftLight} running={s.on} color={tuning.shiftColor} />
+        <div className="h-[26vh] min-h-32 w-full landscape:h-[55vh]"><Road key={run} steer={steer} crashes={setHits} shiftRpm={tuning.shiftLight ? tuning.shiftRpm : 0} /></div>
       </div>
       <div className="space-y-2">
         <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-2">
