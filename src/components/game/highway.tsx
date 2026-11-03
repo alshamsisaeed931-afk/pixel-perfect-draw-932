@@ -14,7 +14,7 @@ type Palette = Record<(typeof TOKENS)[number], string> & { primary: string; pain
 function readPalette(): Palette {
   const cs = getComputedStyle(document.documentElement);
   const v = (n: string) => cs.getPropertyValue(n).trim() || "gray";
-  const p = Object.fromEntries(TOKENS.map((t) => [t, v(`--road-${t}`)])) as Palette;
+  const p = Object.fromEntries(TOKENS.map((t) => [t, v(`--road-${t}`)])) as unknown as Palette;
   p.primary = v("--primary");
   p.paints = Array.from({ length: PAINTS }, (_, i) => v(`--car-${i}`));
   return p;
