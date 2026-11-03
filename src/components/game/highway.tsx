@@ -49,7 +49,7 @@ function SteeringWheel({ steer }: { steer: React.MutableRefObject<number> }) {
       onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); start.current = e.clientX; }}
       onPointerMove={(e) => { if (start.current === null) return; const w = e.currentTarget.getBoundingClientRect().width; steer.current = Math.max(-1, Math.min(1, (e.clientX - start.current) / (w * 0.6))); }}
       onPointerUp={() => (start.current = null)} onPointerCancel={() => (start.current = null)}>
-      <svg ref={wheel} viewBox="0 0 100 100" className="aspect-square w-full max-w-[150px] drop-shadow-lg">
+      <svg ref={wheel} viewBox="0 0 100 100" className="aspect-square w-full max-w-[120px] drop-shadow-lg sm:max-w-[150px]">
         <circle cx="50" cy="50" r="44" fill="none" className="stroke-metal" strokeWidth="9" />
         <circle cx="50" cy="50" r="44" fill="none" className="stroke-background" strokeWidth="2" strokeDasharray="3 5" />
         <path d="M50 6 v10" className="stroke-primary" strokeWidth="6" />
@@ -163,7 +163,7 @@ export function HighwayScreen() {
             <button onClick={() => { sim.resetRun(); setHits(0); setRun((r) => r + 1); }} className="flex items-center gap-1 rounded border px-2 py-1 uppercase"><RotateCcw className="h-3 w-3" />Reset</button>
           </div>
         </div>
-        <div className="aspect-[16/9] w-full landscape:aspect-auto landscape:h-[55vh]"><Road key={run} steer={steer} crashes={setHits} /></div>
+        <div className="h-[30vh] min-h-36 w-full landscape:h-[55vh]"><Road key={run} steer={steer} crashes={setHits} /></div>
         <ShiftLight rpm={s.rpm} target={tuning.shiftRpm} enabled={tuning.shiftLight} running={s.on} color={tuning.shiftColor} />
       </div>
       <div className="space-y-2">
