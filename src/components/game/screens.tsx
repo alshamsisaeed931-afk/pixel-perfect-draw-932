@@ -27,6 +27,7 @@ export function useKeys() {
       if (ev.code === "Space" || ev.code === "ArrowUp" || ev.code === "KeyW") { sim.ensureAudio(); sim.throttleIn = 1; ev.preventDefault(); }
       if (ev.code === "ShiftLeft" || ev.code === "KeyC") sim.clutchIn = 1;
       if (ev.code === "KeyX") sim.nitrousIn = true;
+      if (ev.code === "ArrowDown" || ev.code === "KeyB") { sim.brakeIn = 1; ev.preventDefault(); }
       if (ev.code === "KeyS" && !ev.repeat) sim.startStop();
       const map: Record<string, number> = { Digit1: 1, Digit2: 2, Digit3: 3, Digit4: 4, Digit5: 5, Digit6: 6, Digit7: 7, Digit8: 8, Digit9: 9, KeyT: 10, KeyN: 0, KeyR: -1, Digit0: 0 };
       if (ev.code in map && !ev.repeat) sim.shift(map[ev.code]!);
@@ -35,9 +36,10 @@ export function useKeys() {
       if (ev.code === "Space" || ev.code === "ArrowUp" || ev.code === "KeyW") sim.throttleIn = 0;
       if (ev.code === "ShiftLeft" || ev.code === "KeyC") sim.clutchIn = 0;
       if (ev.code === "KeyX") sim.nitrousIn = false;
+      if (ev.code === "ArrowDown" || ev.code === "KeyB") sim.brakeIn = 0;
     };
     window.addEventListener("keydown", down); window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); sim.throttleIn = 0; sim.clutchIn = 0; sim.nitrousIn = false; };
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); sim.throttleIn = 0; sim.clutchIn = 0; sim.nitrousIn = false; sim.brakeIn = 0; };
   }, []);
 }
 

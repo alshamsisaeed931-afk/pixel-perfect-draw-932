@@ -5,7 +5,11 @@ export const ROAD_HALF = LANE_W * 1.5; // 3 lanes
 export const CAR_W = 1.8;
 export const CAR_L = 4.4;
 
-export type TrafficCar = { id: number; z: number; lane: -1 | 0 | 1; v: number; hue: number };
+export type TrafficCar = { id: number; z: number; lane: -1 | 0 | 1; v: number; paint: number; kind: "car" | "suv" | "truck" };
+export const PAINTS = 6;
+
+/** Length (m) of each traffic vehicle type, used for collisions. */
+export const carLength = (c: Pick<TrafficCar, "kind">) => (c.kind === "truck" ? 10 : CAR_L);
 
 /** Road curvature at a distance along the highway (gentle, repeating bends, |c| ≤ 0.7). */
 export function curveAt(dist: number) {
@@ -29,6 +33,8 @@ export function lateralStep(x: number, steer: number, speed: number, dist: numbe
   return Math.max(-ROAD_HALF - 3, Math.min(ROAD_HALF + 3, x + (steerRate - drift) * dt));
 }
 
+const kindFor = (r: number): TrafficCar["kind"] => (r < 0.15 ? "truck" : r < 0.4 ? "suv" : "car");
+
 export const isOffRoad = (x: number) => Math.abs(x) > ROAD_HALF - CAR_W / 2;
 
 /** Extra drag force (N) from driving on the grass. */
@@ -36,7 +42,7 @@ export const offRoadDrag = (x: number, speed: number) => (isOffRoad(x) ? 900 + M
 
 /** True when the player's car (at road x `px`, distance `pz`) overlaps a traffic car. */
 export function collides(px: number, pz: number, car: TrafficCar) {
-  return Math.abs(car.z - pz) < CAR_L && Math.abs(car.lane * LANE_W - px) < CAR_W;
+  return car.z - pz < CAR_L && pz - car.z < carLength(car) && Math.abs(car.lane * LANE_W - px) < CAR_W;
 }
 
 /** Keeps a few traffic cars ahead of the player, dropping ones far behind. */
@@ -44,7 +50,7 @@ export function updateTraffic(cars: TrafficCar[], pz: number, dt: number, rand =
   const moved = cars.map((c) => ({ ...c, z: c.z + c.v * dt })).filter((c) => c.z > pz - 60 && c.z < pz + 900);
   while (moved.length < 7) {
     const far = moved.reduce((m, c) => Math.max(m, c.z), pz + 60);
-    moved.push({ id: nextId.n++, z: far + 40 + rand() * 90, lane: (Math.floor(rand() * 3) - 1) as -1 | 0 | 1, v: 16 + rand() * 14, hue: Math.floor(rand() * 360) });
+    moved.push({ id: nextId.n++, z: far + 40 + rand() * 90, lane: (Math.floor(rand() * 3) - 1) as -1 | 0 | 1, v: 16 + rand() * 14, paint: Math.floor(rand() * PAINTS), kind: kindFor(rand()) });
   }
   return moved;
 }

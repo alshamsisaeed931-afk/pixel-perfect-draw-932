@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { brakeForce } from "@/lib/dashboard";
 import { collides, isOffRoad, lateralStep, offRoadDrag, ROAD_HALF, updateTraffic } from "@/lib/highway";
 
 describe("highway test drive", () => {
@@ -20,8 +21,13 @@ describe("highway test drive", () => {
   });
 
   it("hits a car in the same lane but not one in the next lane", () => {
-    expect(collides(0, 100, { id: 1, z: 102, lane: 0, v: 20, hue: 0 })).toBe(true);
-    expect(collides(0, 100, { id: 1, z: 102, lane: 1, v: 20, hue: 0 })).toBe(false);
+    expect(collides(0, 100, { id: 1, z: 102, lane: 0, v: 20, paint: 0, kind: "car" })).toBe(true);
+    expect(collides(0, 100, { id: 1, z: 102, lane: 1, v: 20, paint: 0, kind: "car" })).toBe(false);
+  });
+
+  it("full brake stops the car at about 0.9 g", () => {
+    expect(brakeForce(1, 1000)).toBeCloseTo(8829, 0);
+    expect(brakeForce(0, 1000)).toBe(0);
   });
 
   it("always keeps traffic on the road ahead", () => {
