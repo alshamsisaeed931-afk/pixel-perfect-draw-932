@@ -20,6 +20,8 @@ class Sim {
   tuning: Tuning = defaultTuning(ENGINES[0]!);
   opts: Opts = { revMatch: true, autoClutch: false, vibration: true };
   throttleIn = 0; clutchIn = 0; nitrousIn = false;
+  /** Extra rolling resistance (N) from the highway test drive, e.g. driving on grass. */
+  extraDrag = 0;
   gears = 6; ratios: Record<number, number> = gearRatios(6);
   history: { t: number; rpm: number; boost: number }[] = [];
   dynoResult: DynoPoint[] = [];
@@ -49,6 +51,8 @@ class Sim {
   setVolumes(v: Volumes) { this.audio.setVolumes(v); }
   setGears(n: number) { this.gears = n; this.ratios = gearRatios(n); if (this.s.gear > n) this.s.gear = n; }
   refillNitrous() { this.s.nos = 1; }
+  /** Highway collision: scrub most of the speed. */
+  crash() { this.s.speed *= 0.3; this.msg("CRASH!"); this.buzz(200); }
 
   private msg(m: string) { this.s.message = m; this.s.msgId++; }
   private buzz(ms: number) { if (this.opts.vibration && typeof navigator !== "undefined") navigator.vibrate?.(ms); }
@@ -187,7 +191,7 @@ class Sim {
       if (s.rpm < 0) s.rpm = 0;
       const F = (Tc * G / WHEEL_R) * 0.92;
       const sign = Math.sign(s.speed);
-      const drag = s.dyno ? 0 : sign * (150 + 0.4 * s.speed * s.speed);
+      const drag = s.dyno ? 0 : sign * (150 + 0.4 * s.speed * s.speed + this.extraDrag);
       let v = s.speed + ((F - drag) / mass) * h;
       if (sign !== 0 && Math.sign(v) !== sign && Math.abs(F) < 160) v = 0;
       if (s.speed === 0 && Math.abs(F) < 160) v = 0;

@@ -20,7 +20,7 @@ export function curve(e: Engine, t: Tuning) {
 }
 export const peak = (e: Engine, t: Tuning) => { const c = curve(e, t); return { hp: Math.max(...c.map((p) => p.hp)), tq: Math.max(...c.map((p) => p.tq)) }; };
 
-function useKeys() {
+export function useKeys() {
   useEffect(() => {
     const down = (ev: KeyboardEvent) => {
       if ((ev.target as HTMLElement)?.tagName === "INPUT") return;
@@ -94,7 +94,7 @@ function Cockpit({ children }: { children?: React.ReactNode }) {
   );
 }
 
-function Msg() {
+export function Msg() {
   const s = useSim();
   const [show, setShow] = useState("");
   useEffect(() => { if (!s.msgId) return; setShow(s.message); const t = setTimeout(() => setShow(""), 1800); return () => clearTimeout(t); }, [s.msgId]); // eslint-disable-line react-hooks/exhaustive-deps

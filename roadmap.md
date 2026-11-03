@@ -13,3 +13,4 @@
 - [ ] Loading screen
 - [ ] Google Search Console setup for published site
 - [ ] Marketing: get more visitors plan
+- [x] Highway test drive with steering, gears, clutch and gas
