@@ -1,5 +1,5 @@
 import { EngineAudio, type Volumes } from "./audio";
-import { ecuThrottle, effectiveInertia, finalDriveRatio, gearRatios, nitrousTorque, throttleStep } from "./dashboard";
+import { brakeForce, ecuThrottle, effectiveInertia, finalDriveRatio, gearRatios, nitrousTorque, throttleStep } from "./dashboard";
 import { CAM, ENGINES, defaultTuning, hpFrom, steadyBoost, torqueAt, type Engine, type Tuning } from "./engines";
 
 export const GEAR_RATIOS: Record<number, number> = gearRatios(6);
@@ -22,6 +22,8 @@ class Sim {
   throttleIn = 0; clutchIn = 0; nitrousIn = false;
   /** Extra rolling resistance (N) from the highway test drive, e.g. driving on grass. */
   extraDrag = 0;
+  /** Brake pedal 0–1 (highway test drive). */
+  brakeIn = 0;
   gears = 6; ratios: Record<number, number> = gearRatios(6);
   history: { t: number; rpm: number; boost: number }[] = [];
   dynoResult: DynoPoint[] = [];
@@ -178,6 +180,7 @@ class Sim {
     if (s.nosOn) s.nos = Math.max(0, s.nos - dt * (tu.nitrousShot / 100) / 14);
     const nosTq = s.nosOn ? nitrousTorque(tu.nitrousShot, s.rpm, e.peakTRpm) : 0;
     const cap = e.peakT * 2.2 * (1 + s.boost / 14.7) + nosTq * 1.5;
+    const brakeF = s.dyno ? 0 : brakeForce(this.brakeIn, mass);
     const N = 8, h = dt / N;
     let Te = 0, Tc = 0;
     for (let i = 0; i < N; i++) {
@@ -191,10 +194,11 @@ class Sim {
       if (s.rpm < 0) s.rpm = 0;
       const F = (Tc * G / WHEEL_R) * 0.92;
       const sign = Math.sign(s.speed);
-      const drag = s.dyno ? 0 : sign * (150 + 0.4 * s.speed * s.speed + this.extraDrag);
+      const drag = s.dyno ? 0 : sign * (150 + 0.4 * s.speed * s.speed + this.extraDrag + brakeF);
       let v = s.speed + ((F - drag) / mass) * h;
       if (sign !== 0 && Math.sign(v) !== sign && Math.abs(F) < 160) v = 0;
-      if (s.speed === 0 && Math.abs(F) < 160) v = 0;
+      if (s.speed === 0 && Math.abs(F) < 160 + brakeF) v = 0;
+      if (brakeF > 0 && sign !== 0 && Math.sign(v) !== sign) v = 0;
       s.speed = v;
     }
     // cam lope: aggressive cams make the idle hunt and shake

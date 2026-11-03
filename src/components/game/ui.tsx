@@ -113,7 +113,7 @@ export function ShiftLight({ rpm, target, enabled, running, color }: { rpm: numb
   );
 }
 
-export function Pedal({ label, onChange, variant = "gas", className }: { label: string; onChange: (v: number) => void; variant?: "gas" | "clutch"; className?: string }) {
+export function Pedal({ label, onChange, variant = "gas", className }: { label: string; onChange: (v: number) => void; variant?: "gas" | "clutch" | "brake"; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const val = (y: number) => { const r = ref.current?.getBoundingClientRect(); if (!r) return 0; return Math.min(1, Math.max(0.3, 1 - (y - r.top) / r.height + 0.15)); };
   const fill = useRef<HTMLDivElement>(null);
@@ -121,11 +121,11 @@ export function Pedal({ label, onChange, variant = "gas", className }: { label: 
   return (
     <div ref={ref}
       onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); set(variant === "clutch" ? 1 : val(e.clientY)); }}
-      onPointerMove={(e) => { if (e.buttons && variant === "gas") set(val(e.clientY)); }}
+      onPointerMove={(e) => { if (e.buttons && variant !== "clutch") set(val(e.clientY)); }}
       onPointerUp={() => set(0)} onPointerCancel={() => set(0)} onContextMenu={(e) => e.preventDefault()}
       className={cn("no-select carbon relative flex cursor-pointer items-end justify-center overflow-hidden rounded-2xl border-2 active:scale-[0.98]",
-        variant === "gas" ? "border-primary/70" : "border-metal", className)}>
-      <div ref={fill} className={cn("absolute inset-x-0 bottom-0 transition-[height] duration-75", variant === "gas" ? "bg-primary/40" : "bg-metal/40")} style={{ height: 0 }} />
+        variant === "gas" ? "border-primary/70" : variant === "brake" ? "border-foreground/60" : "border-metal", className)}>
+      <div ref={fill} className={cn("absolute inset-x-0 bottom-0 transition-[height] duration-75", variant === "gas" ? "bg-primary/40" : variant === "brake" ? "bg-foreground/25" : "bg-metal/40")} style={{ height: 0 }} />
       <div className="absolute inset-2 rounded-xl border border-dashed border-border/60" />
       <span className="font-display relative mb-3 text-sm font-bold tracking-[0.25em] uppercase">{label}</span>
     </div>

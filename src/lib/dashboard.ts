@@ -53,3 +53,6 @@ export function npcField(baseET: number, count: number, difficulty: "easy" | "no
 }
 /** Finishing position (1 = winner) of an ET among rival ETs. */
 export const finishPosition = (et: number, rivals: number[]) => 1 + rivals.filter((r) => r < et).length;
+
+/** Brake force (N) for a pedal position 0–1; full pedal decelerates at about 0.9 g. */
+export const brakeForce = (pedal: number, mass: number) => Math.max(0, Math.min(1, pedal)) * mass * 9.81 * 0.9;
