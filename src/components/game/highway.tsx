@@ -127,9 +127,9 @@ function Road({ steer, crashes, shiftRpm }: { steer: React.MutableRefObject<numb
       // HUD
       const spd = Math.abs(s.speed) * MS_TO[units];
       ctx.fillStyle = pal.bg; ctx.globalAlpha = 0.6; ctx.fillRect(8, 8, W * 0.32, H * 0.2); ctx.globalAlpha = 1;
-      ctx.fillStyle = pal.line; ctx.font = `bold ${Math.round(H * 0.09)}px "Share Tech Mono", monospace`;
+      ctx.fillStyle = pal.line; ctx.font = `bold ${Math.round(Math.max(18, H * 0.11))}px "Share Tech Mono", monospace`;
       ctx.fillText(`${spd.toFixed(0)}`, 16, 8 + H * 0.1);
-      ctx.font = `${Math.round(H * 0.045)}px "Share Tech Mono", monospace`;
+      ctx.font = `${Math.round(Math.max(11, H * 0.055))}px "Share Tech Mono", monospace`;
       ctx.fillText(`${units === "metric" ? "KM/H" : "MPH"} · G ${s.gear === -1 ? "R" : s.gear === 0 ? "N" : s.gear} · ${(s.rpm / 1000).toFixed(1)}k`, 16, 8 + H * 0.17);
       if (shiftRpm > 0 && s.on && s.rpm >= shiftRpm) { ctx.fillStyle = pal.primary; ctx.fillRect(8, 8 + H * 0.2, W * 0.32, H * 0.035); ctx.fillText("SHIFT", 16, 8 + H * 0.27); ctx.fillStyle = pal.line; }
       if (isOffRoad(x)) { ctx.fillStyle = pal.primary; ctx.textAlign = "center"; ctx.fillText("OFF ROAD", W / 2, H * 0.1); ctx.textAlign = "left"; }

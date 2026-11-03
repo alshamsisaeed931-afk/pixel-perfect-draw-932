@@ -14,3 +14,4 @@
 - The cockpit gear selector lives in a dedicated Shifter component and delegates every selection to sim.shift; this preserves clutch checks and keeps presentation separate from physics.
 - Dashboard indicators and tuning math use browser-safe pure helpers in src/lib/dashboard.ts so physics effects and RPM thresholds can be tested without audio or animation.
 - Merge engine tuning defaults when restoring saved configurations so older setups remain compatible with added controls.
+- The highway test drive (src/components/game/highway.tsx) draws on a canvas in its own rAF loop and drives the shared sim only through throttle/clutch/shift inputs plus sim.extraDrag and sim.crash; road, steering and traffic math live in pure helpers in src/lib/highway.ts so they stay testable.
