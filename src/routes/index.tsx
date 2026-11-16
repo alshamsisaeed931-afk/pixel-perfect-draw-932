@@ -7,6 +7,7 @@ import { CompareScreen, DragScreen, DriveScreen, DynoScreen, GarageScreen, Setti
 import { HighwayScreen } from "@/components/game/highway";
 import { OnlineScreen, type OnlineRace } from "@/components/game/online";
 import { cn } from "@/lib/utils";
+import loadingArtwork from "@/assets/engine-sim-loading.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -40,12 +41,11 @@ function LoadingScreen() {
   }, []);
   if (gone) return null;
   return (
-    <div role="status" aria-label="Loading" className={cn("carbon fixed inset-0 z-50 flex flex-col items-center justify-center bg-background transition-opacity duration-300", hide && "pointer-events-none opacity-0")}>
-      <Gauge className="h-14 w-14 animate-pulse text-primary" />
-      <h1 className="font-display mt-4 text-3xl font-bold tracking-[0.15em]">ENGINE SIM <span className="text-primary text-glow">ULTRA</span></h1>
-      <div className="mt-6 h-1.5 w-56 overflow-hidden rounded-full bg-muted"><div className="loader-bar h-full bg-primary glow" /></div>
-      <p className="mt-3 font-mono text-xs tracking-widest text-muted-foreground uppercase">Warming up {ENGINES.length} engines…</p>
-      <p className="mt-8 text-[10px] tracking-[0.3em] text-muted-foreground uppercase">By Saeed Khalfan Salem Alshamsi</p>
+    <div role="status" aria-label="Loading" className={cn("fixed inset-0 z-50 flex flex-col items-center justify-center bg-loading-background transition-opacity duration-300", hide && "pointer-events-none opacity-0")}>
+      <img src={loadingArtwork.url} alt="ENGINE SIM ULTRA — Simulate. Tune. Race." className="max-h-[70svh] w-full max-w-5xl object-contain" fetchPriority="high" />
+      <div className="mt-6 h-1.5 w-56 max-w-[70%] overflow-hidden rounded-full bg-muted"><div className="loader-bar h-full bg-primary glow" /></div>
+      <p className="mt-3 font-mono text-xs text-muted-foreground uppercase">Warming up {ENGINES.length} engines…</p>
+      <p className="mt-6 px-4 text-center text-[10px] text-muted-foreground uppercase">By Saeed Khalfan Salem Alshamsi</p>
     </div>
   );
 }
